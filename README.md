@@ -17,6 +17,7 @@ OpenWeb Linux is a browser-based Linux installer focused on accessibility, porta
 - Includes an OpenWeb Linux logo and browser-tab icon
 - Supports local file commands, command history, and JSON workspace backups
 - Provides multiple browser terminal tabs that share the same workspace files
+- Includes an on-screen keyboard for touch devices and the Debian VM
 - Designed to be complete and self-contained
 - Boots from the Debian installer ISO bundled with the site; no separate ISO download is required
 - No third-party asset host is needed for the default kernel and emulator files
@@ -26,7 +27,11 @@ OpenWeb Linux is a browser-based Linux installer focused on accessibility, porta
 
 OpenWeb Linux serves the default kernel and emulator assets directly from the project itself. The browser loads the Linux environment through the v86 emulator, which emulates an x86 machine and boots the operating system inside the page.
 
-This approach makes OpenWeb Linux more than a static browser demo: it boots the real Debian installer in the web page. Completing the Debian installation is necessary before using the guest OS or apt. Before booting, the browser terminal also provides a local workspace (`help`, `write`, `touch`, `download`, `save`); it is not a shell and does not execute arbitrary operating-system commands.
+This approach makes OpenWeb Linux more than a static browser demo: it boots the real Debian installer in the web page. Completing the Debian installation is necessary before using the guest OS or apt. Before booting, the browser terminal provides a local file workspace with common commands for listing, searching, copying, moving, and editing its files. It is not a shell and does not execute arbitrary operating-system commands; use the Debian VM for Linux commands.
+
+## Terminal web
+
+The browser workspace includes `help`, `pwd`, `ls`, `cd`, `tree`, `find`, `cat`, `head`, `tail`, `grep`, `wc`, `echo`, `history`, `touch`, `write`, `mkdir`, `rmdir`, `cp`, `mv`, `rm`, `download`, and `save`. Files are stored locally by the browser and shared across terminal tabs. Open **⌨ Teclado** for the touch keyboard; while Debian is running, its keys are sent to the VM.
 
 ## Package Manager
 
@@ -62,7 +67,7 @@ El acceso a red usa el relay público `wss://relay.widgetry.org/` (el mismo endp
 
 La mini ISO es un instalador de red, no un sistema live: `apt` está disponible después de instalar Debian. Para una instalación más rápida, selecciona un mirror Debian cercano y no instales un entorno de escritorio; puedes añadir paquetes después con apt. La descarga del sistema base sigue limitada por la conexión y el mirror escogido.
 
-Usa **+** y **×** en la barra de pestañas para abrir y cerrar terminales del espacio web. Cada pestaña conserva su historial por separado; los archivos y directorios se comparten entre ellas. La VM Debian sigue siendo una única máquina virtual compartida.
+Usa **+** y **×** en la barra de pestañas para abrir y cerrar terminales del espacio web. Cada pestaña conserva su historial por separado; los archivos y directorios se comparten entre ellas. El botón **⌨ Teclado** abre el teclado en pantalla: sus teclas escriben en el espacio web o se envían a Debian cuando la VM está activa. La VM Debian sigue siendo una única máquina virtual compartida.
 
 Los orígenes, licencias y hashes SHA-256 de los binarios incluidos se documentan en [public/ASSETS.md](./public/ASSETS.md). La mini ISO también puede descargarse directamente desde [Debian](https://deb.debian.org/debian/dists/bookworm/main/installer-i386/current/images/netboot/mini.iso).
 

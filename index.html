@@ -107,6 +107,29 @@
       padding: 0 14px; border-top: 1px solid #252a23; background: #131611; color: #7d8576; font: 10px var(--mono);
     }
     .bottom-hint { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .keyboard-toggle {
+      min-height: 25px; flex: 0 0 auto; padding: 0 8px; border: 1px solid #343a30; border-radius: 5px;
+      background: #1b1f19; color: #aeb7a3; cursor: pointer; font: 10px var(--mono);
+    }
+    .keyboard-toggle[aria-expanded="true"] { border-color: #687653; color: var(--lime); }
+    .mobile-keyboard {
+      display: grid; flex: 0 0 auto; gap: 5px; padding: 7px;
+      border-top: 1px solid #252a23; background: #11140f; touch-action: manipulation;
+    }
+    .mobile-keyboard[hidden] { display: none; }
+    .keyboard-row { display: flex; justify-content: center; gap: 4px; }
+    .keyboard-key {
+      min-width: 0; min-height: 36px; flex: 1 1 0; padding: 0 4px;
+      border: 1px solid #343a30; border-radius: 5px; background: #20241d; color: #e2e7dc;
+      cursor: pointer; font: 12px var(--mono); touch-action: manipulation; user-select: none;
+    }
+    .keyboard-key:active, .keyboard-key[aria-pressed="true"] { border-color: #81965d; background: #303a25; color: var(--lime); }
+    .keyboard-key.wide { flex: 1.6 1 0; font-size: 10px; }
+    .keyboard-key.space { flex: 4 1 0; }
+    @media (max-width: 620px) {
+      .keyboard-key { min-height: 38px; }
+      .bottom-bar { gap: 6px; }
+    }
     .modal-backdrop {
       position: fixed; z-index: 5; inset: 0; display: none; align-items: center; justify-content: center;
       padding: 20px; background: rgba(4,6,4,.75); backdrop-filter: blur(6px);
@@ -219,7 +242,38 @@
       </div>
       <div class="bottom-bar">
         <span class="bottom-hint">help · save · apt · terminales comparten archivos</span>
+        <button class="keyboard-toggle" id="keyboard-toggle" type="button" aria-expanded="false" aria-controls="mobile-keyboard">⌨ Teclado</button>
         <span id="storage-status">Guardado local activado</span>
+      </div>
+      <div class="mobile-keyboard" id="mobile-keyboard" aria-label="Teclado en pantalla" hidden>
+        <div class="keyboard-row" data-key-row="1234567890"></div>
+        <div class="keyboard-row" data-key-row="qwertyuiop"></div>
+        <div class="keyboard-row" data-key-row="asdfghjkl"></div>
+        <div class="keyboard-row">
+          <button class="keyboard-key wide" type="button" data-key-action="shift" aria-label="Mayúsculas" aria-pressed="false">⇧</button>
+          <div class="keyboard-row" data-key-row="zxcvbnm" style="flex:5"></div>
+          <button class="keyboard-key wide" type="button" data-key-action="backspace" aria-label="Retroceso">⌫</button>
+        </div>
+        <div class="keyboard-row">
+          <button class="keyboard-key wide" type="button" data-key-action="escape">Esc</button>
+          <button class="keyboard-key wide" type="button" data-key-action="tab">Tab</button>
+          <button class="keyboard-key" type="button" data-key-text="/">/</button>
+          <button class="keyboard-key" type="button" data-key-text="-">-</button>
+          <button class="keyboard-key" type="button" data-key-text="_">_</button>
+          <button class="keyboard-key" type="button" data-key-text=".">.</button>
+          <button class="keyboard-key" type="button" data-key-action="left" aria-label="Flecha izquierda">←</button>
+          <button class="keyboard-key" type="button" data-key-action="down" aria-label="Flecha abajo">↓</button>
+          <button class="keyboard-key" type="button" data-key-action="up" aria-label="Flecha arriba">↑</button>
+          <button class="keyboard-key" type="button" data-key-action="right" aria-label="Flecha derecha">→</button>
+          <button class="keyboard-key wide" type="button" data-key-action="enter">↵</button>
+        </div>
+        <div class="keyboard-row">
+          <button class="keyboard-key" type="button" data-key-text="@">@</button>
+          <button class="keyboard-key space" type="button" data-key-text=" ">Espacio</button>
+          <button class="keyboard-key" type="button" data-key-text=":">:</button>
+          <button class="keyboard-key" type="button" data-key-text="*">*</button>
+          <button class="keyboard-key" type="button" data-key-text="?">?</button>
+        </div>
       </div>
     </main>
   </div>
@@ -237,6 +291,7 @@
         <li>Para descargar paquetes, el instalador usa un relay público de red y los repositorios Debian. No uses contraseñas ni datos sensibles durante esa conexión.</li>
         <li>Al terminar, el sistema instalado y tus cambios siguen en memoria hasta que cierres o recargues la página.</li>
         <li>Usa <strong>Guardar</strong> para exportar el estado completo de v86 (.bin) y <strong>Abrir</strong> para restaurarlo. El archivo puede ser muy grande.</li>
+        <li>En móvil, pulsa <strong>⌨ Teclado</strong> para mostrar teclas especiales y escribir dentro de Debian.</li>
       </ol>
       <div class="dialog-actions"><button class="secondary-button" type="button" data-close>Entendido</button></div>
     </section>
@@ -317,6 +372,8 @@
       const restoreInput = document.getElementById("restore-input");
       const storageStatus = document.getElementById("storage-status");
       const toast = document.getElementById("toast");
+      const keyboardPanel = document.getElementById("mobile-keyboard");
+      const keyboardToggle = document.getElementById("keyboard-toggle");
       const files = Object.assign(Object.create(null), { "README.txt": "Bienvenido a OpenWeb Linux.\nEste espacio de archivos se guarda en este navegador.\nUsa help para ver los comandos disponibles.\n" });
       const directories = new Set(["/"]);
       const terminalSessions = [];
@@ -326,6 +383,7 @@
       let activeTerminal = null;
       let nextTerminalNumber = 1;
       let vmScreenVisible = false;
+      let keyboardShift = false;
       let toastTimer;
 
       function showToast(message) {
@@ -570,6 +628,30 @@
         return [...found].sort((a, b) => a.localeCompare(b));
       }
 
+      function directoryHasChildren(path) {
+        const prefix = path === "/" ? "/" : path.replace(/\/$/, "") + "/";
+        return directories.has(path) || Object.keys(files).some(file => file.startsWith(prefix)) ||
+          [...directories].some(directory => directory !== path && directory.startsWith(prefix));
+      }
+
+      function fileParent(path) {
+        const separator = path.lastIndexOf("/");
+        return separator > 0 ? path.slice(0, separator) : "/";
+      }
+
+      function destinationFilePath(source, destination) {
+        return directories.has(destination) ? normalizePath(destination + "/" + source.split("/").pop()).slice(1) : destination.slice(1);
+      }
+
+      function printTree(path, prefix = "") {
+        const entries = childrenOf(path);
+        entries.forEach((entry, index) => {
+          const last = index === entries.length - 1;
+          appendLine(prefix + (last ? "└── " : "├── ") + entry);
+          if (entry.endsWith("/")) printTree(normalizePath(path + "/" + entry.slice(0, -1)), prefix + (last ? "    " : "│   "));
+        });
+      }
+
       function execute(raw) {
         const input = raw.trim();
         addPrompt(raw);
@@ -581,21 +663,25 @@
 
         switch (command) {
           case "help":
-            appendLine("Comandos del espacio web (no es una shell Debian):", "muted");
-            appendLine("  help                 mostrar esta ayuda");
-            appendLine("  pwd                  mostrar la carpeta actual");
-            appendLine("  ls [ruta]            listar archivos");
-            appendLine("  cat <archivo>        leer un archivo");
-            appendLine("  write <archivo> <texto>  crear o reemplazar un archivo");
-            appendLine("  mkdir <carpeta>      crear una carpeta");
-            appendLine("  cd [carpeta]         cambiar de carpeta");
-            appendLine("  rm <archivo>         borrar un archivo");
-            appendLine("  clear                limpiar la pantalla");
-            appendLine("  save                 descargar un respaldo JSON");
-            appendLine("  download <archivo>   descargar un archivo del espacio");
-            appendLine("  touch <archivo>      crear un archivo vacío");
-            appendLine("  apt ...              ver requisitos para usar apt en Debian");
-            appendLine("Usa Guardar/Abrir para exportar o restaurar el espacio.", "muted");
+            appendLine("Comandos disponibles en el espacio web (no ejecutan comandos del sistema):", "muted");
+            appendLine("Archivos: ls, cd, pwd, tree, find, cat, head, tail, grep, wc, touch, write, mkdir, rmdir, cp, mv, rm");
+            appendLine("Utilidades: echo, date, whoami, uname, history, clear, help, save, download, apt");
+            appendLine("Los archivos se comparten entre pestañas y se guardan en este navegador.", "muted");
+            break;
+          case "echo":
+            appendLine(input.replace(/^echo(?:\s+|$)/, ""));
+            break;
+          case "date":
+            appendLine(new Date().toString());
+            break;
+          case "whoami":
+            appendLine("openweb");
+            break;
+          case "uname":
+            appendLine(args[0] === "-a" ? "OpenWeb browser-workspace 1.0 browser local" : "OpenWeb");
+            break;
+          case "history":
+            activeTerminal.history.forEach((entry, index) => appendLine(String(index + 1).padStart(4, " ") + "  " + entry));
             break;
           case "pwd":
             appendLine(currentPath);
@@ -603,15 +689,80 @@
           case "ls": {
             const path = normalizePath(args[0] || ".");
             const entries = childrenOf(path);
-            if (path !== "/" && !Object.keys(files).some(file => file.startsWith(path.replace(/\/$/, "") + "/"))) appendLine("ls: no existe el directorio: " + path, "error");
+            if (!directoryHasChildren(path)) appendLine("ls: no existe el directorio: " + path, "error");
             else appendLine(entries.join("  ") || "(vacío)");
+            break;
+          }
+          case "tree": {
+            const path = normalizePath(args[0] || ".");
+            if (!directoryHasChildren(path)) appendLine("tree: no existe el directorio: " + path, "error");
+            else {
+              appendLine(path);
+              printTree(path);
+            }
+            break;
+          }
+          case "find": {
+            const root = normalizePath(args[0] || ".");
+            if (!directoryHasChildren(root)) { appendLine("find: no existe el directorio: " + root, "error"); break; }
+            const prefix = root === "/" ? "/" : root.replace(/\/$/, "") + "/";
+            [...directories].filter(path => path.startsWith(prefix) && path !== root)
+              .concat(Object.keys(files).map(path => "/" + path).filter(path => path.startsWith(prefix)))
+              .sort((a, b) => a.localeCompare(b))
+              .forEach(path => appendLine(path));
             break;
           }
           case "cat": {
             if (!argument) { appendLine("uso: cat <archivo>", "error"); break; }
-            const path = normalizePath(args[0]);
-            if (!Object.prototype.hasOwnProperty.call(files, path.slice(1))) appendLine("cat: no existe el archivo: " + path, "error");
-            else files[path.slice(1)].split("\n").forEach(part => appendLine(part));
+            args.forEach(name => {
+              const path = normalizePath(name);
+              if (!Object.prototype.hasOwnProperty.call(files, path.slice(1))) appendLine("cat: no existe el archivo: " + path, "error");
+              else files[path.slice(1)].split("\n").forEach(part => appendLine(part));
+            });
+            break;
+          }
+          case "head":
+          case "tail": {
+            if (!args.length) { appendLine("uso: " + command + " [-n líneas] <archivo>", "error"); break; }
+            let count = 10;
+            let filename = args[0];
+            if (args[0] === "-n" && args.length > 2 && /^\d+$/.test(args[1])) {
+              count = Math.min(Number(args[1]), 1000);
+              filename = args[2];
+            }
+            const path = normalizePath(filename).slice(1);
+            if (!Object.prototype.hasOwnProperty.call(files, path)) appendLine(command + ": no existe el archivo: /" + path, "error");
+            else {
+              const lines = files[path].split("\n");
+              (command === "head" ? lines.slice(0, count) : lines.slice(-count)).forEach(line => appendLine(line));
+            }
+            break;
+          }
+          case "grep": {
+            const insensitive = args[0] === "-i";
+            const pattern = args[insensitive ? 1 : 0];
+            const filename = args[insensitive ? 2 : 1];
+            if (!pattern || !filename) { appendLine("uso: grep [-i] <texto> <archivo>", "error"); break; }
+            const path = normalizePath(filename).slice(1);
+            if (!Object.prototype.hasOwnProperty.call(files, path)) appendLine("grep: no existe el archivo: /" + path, "error");
+            else {
+              const needle = insensitive ? pattern.toLowerCase() : pattern;
+              files[path].split("\n").filter(line => (insensitive ? line.toLowerCase() : line).includes(needle)).forEach(line => appendLine(line));
+            }
+            break;
+          }
+          case "wc": {
+            if (!args.length) { appendLine("uso: wc <archivo>", "error"); break; }
+            args.forEach(filename => {
+              const path = normalizePath(filename).slice(1);
+              if (!Object.prototype.hasOwnProperty.call(files, path)) appendLine("wc: no existe el archivo: /" + path, "error");
+              else {
+                const contents = files[path];
+                const lines = contents ? contents.split("\n").filter((line, index, all) => index < all.length - 1 || line !== "").length : 0;
+                const words = contents.trim() ? contents.trim().split(/\s+/).length : 0;
+                appendLine(String(lines).padStart(6) + String(words).padStart(7) + String(contents.length).padStart(7) + " " + filename);
+              }
+            });
             break;
           }
           case "write": {
@@ -619,6 +770,7 @@
             if (!match) { appendLine("uso: write <archivo> <texto>", "error"); break; }
             const path = normalizePath(match[1]).slice(1);
             if (!path) { appendLine("write: indica el nombre de un archivo.", "error"); break; }
+            if (!directories.has(fileParent("/" + path))) { appendLine("write: no existe el directorio padre de /" + path, "error"); break; }
             files[path] = match[2] + "\n";
             appendLine("Guardado: " + path, "green");
             break;
@@ -634,8 +786,21 @@
           }
           case "cd": {
             const path = normalizePath(args[0] || "/");
-            if (!directories.has(path)) appendLine("cd: no existe el directorio: " + path, "error");
+            if (!directoryHasChildren(path)) appendLine("cd: no existe el directorio: " + path, "error");
             else currentPath = path;
+            break;
+          }
+          case "cp":
+          case "mv": {
+            if (args.length !== 2) { appendLine("uso: " + command + " <origen> <destino>", "error"); break; }
+            const source = normalizePath(args[0]).slice(1);
+            const destination = destinationFilePath(source, normalizePath(args[1]));
+            if (!Object.prototype.hasOwnProperty.call(files, source)) { appendLine(command + ": no existe el archivo: /" + source, "error"); break; }
+            if (!directories.has(fileParent("/" + destination))) { appendLine(command + ": no existe el directorio de destino: /" + fileParent("/" + destination), "error"); break; }
+            if (source === destination) { appendLine(command + ": origen y destino son iguales.", "error"); break; }
+            files[destination] = files[source];
+            if (command === "mv") delete files[source];
+            appendLine((command === "cp" ? "Copiado: " : "Movido: ") + "/" + source + " → /" + destination, "green");
             break;
           }
           case "rm": {
@@ -643,6 +808,17 @@
             const path = normalizePath(args[0]).slice(1);
             if (!Object.prototype.hasOwnProperty.call(files, path)) appendLine("rm: no existe el archivo: /" + path, "error");
             else { delete files[path]; appendLine("Eliminado: " + path, "green"); }
+            break;
+          }
+          case "rmdir": {
+            if (!argument) { appendLine("uso: rmdir <carpeta>", "error"); break; }
+            const path = normalizePath(args[0]);
+            if (!directories.has(path) || path === "/") appendLine("rmdir: no existe la carpeta o no se puede borrar: " + path, "error");
+            else if (directoryHasChildren(path) && childrenOf(path).length) appendLine("rmdir: la carpeta no está vacía: " + path, "error");
+            else {
+              directories.delete(path);
+              appendLine("Carpeta eliminada: " + path, "green");
+            }
             break;
           }
           case "clear":
@@ -654,10 +830,15 @@
             break;
           case "touch": {
             if (!argument) { appendLine("uso: touch <archivo>", "error"); break; }
-            const path = normalizePath(args[0]).slice(1);
-            if (!path) { appendLine("touch: indica el nombre de un archivo.", "error"); break; }
-            if (!Object.prototype.hasOwnProperty.call(files, path)) files[path] = "";
-            appendLine("Archivo listo: " + path, "green");
+            args.forEach(filename => {
+              const path = normalizePath(filename).slice(1);
+              if (!path) appendLine("touch: indica el nombre de un archivo.", "error");
+              else if (!directories.has(fileParent("/" + path))) appendLine("touch: no existe el directorio padre de /" + path, "error");
+              else {
+                if (!Object.prototype.hasOwnProperty.call(files, path)) files[path] = "";
+                appendLine("Archivo listo: " + path, "green");
+              }
+            });
             break;
           }
           case "download": {
@@ -749,6 +930,82 @@
         });
         input.focus();
       }
+
+      function insertKeyboardText(input, text) {
+        const start = input.selectionStart === null ? input.value.length : input.selectionStart;
+        const end = input.selectionEnd === null ? start : input.selectionEnd;
+        input.setRangeText(text, start, end, "end");
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+        input.focus();
+      }
+
+      function pressWorkspaceKey(action) {
+        const input = document.getElementById("command-input");
+        if (!input) return;
+        if (action === "backspace") {
+          const start = input.selectionStart === null ? input.value.length : input.selectionStart;
+          const end = input.selectionEnd === null ? start : input.selectionEnd;
+          if (start === end && start > 0) input.setSelectionRange(start - 1, end);
+          insertKeyboardText(input, "");
+        } else if (action === "tab") insertKeyboardText(input, "\t");
+        else if (action === "enter") input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+        else if (action === "up" || action === "down") input.dispatchEvent(new KeyboardEvent("keydown", { key: action === "up" ? "ArrowUp" : "ArrowDown", bubbles: true }));
+        else if (action === "left" || action === "right") {
+          const position = input.selectionStart === null ? input.value.length : input.selectionStart;
+          const next = Math.max(0, Math.min(input.value.length, position + (action === "left" ? -1 : 1)));
+          input.setSelectionRange(next, next);
+          input.focus();
+        } else if (action === "escape") {
+          input.value = "";
+          input.focus();
+        }
+      }
+
+      function pressVirtualKey(action, text) {
+        if (action === "shift") {
+          keyboardShift = !keyboardShift;
+          const shiftButton = keyboardPanel.querySelector('[data-key-action="shift"]');
+          shiftButton.setAttribute("aria-pressed", String(keyboardShift));
+          return;
+        }
+        const value = text === undefined ? "" : (keyboardShift ? text.toUpperCase() : text);
+        keyboardShift = false;
+        const shiftButton = keyboardPanel.querySelector('[data-key-action="shift"]');
+        shiftButton.setAttribute("aria-pressed", "false");
+        if (vmScreenVisible && vmRunning && emulator) {
+          const keyCodes = { backspace: 8, tab: 9, enter: 13, escape: 27, left: 37, up: 38, right: 39, down: 40 };
+          const operation = action ? emulator.keyboard_send_keys([keyCodes[action]]) : emulator.keyboard_send_text(value);
+          operation.catch(error => showToast("No se pudo enviar la tecla a Debian: " + error.message));
+          return;
+        }
+        if (action) pressWorkspaceKey(action);
+        else {
+          const input = document.getElementById("command-input");
+          if (input) insertKeyboardText(input, value);
+        }
+      }
+
+      keyboardPanel.querySelectorAll("[data-key-row]").forEach(row => {
+        for (const character of row.dataset.keyRow) {
+          const button = document.createElement("button");
+          button.className = "keyboard-key";
+          button.type = "button";
+          button.dataset.keyText = character;
+          button.textContent = character;
+          row.appendChild(button);
+        }
+      });
+      keyboardPanel.querySelectorAll(".keyboard-key").forEach(button => {
+        button.addEventListener("pointerdown", event => event.preventDefault());
+        button.addEventListener("click", () => pressVirtualKey(button.dataset.keyAction, button.dataset.keyText));
+      });
+      function setKeyboardOpen(open) {
+        keyboardPanel.hidden = !open;
+        keyboardToggle.setAttribute("aria-expanded", String(open));
+        keyboardToggle.textContent = open ? "⌨ Ocultar" : "⌨ Teclado";
+      }
+      keyboardToggle.addEventListener("click", () => setKeyboardOpen(keyboardPanel.hidden));
+      if (window.matchMedia("(pointer: coarse)").matches) setKeyboardOpen(true);
 
       function openModal(id) {
         if (!document.querySelector(".modal-backdrop.open")) modalReturnFocus = document.activeElement;
