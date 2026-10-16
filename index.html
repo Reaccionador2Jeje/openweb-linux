@@ -1,0 +1,1095 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#10120f">
+  <meta name="description" content="Terminal web de OpenWeb Linux con espacio de trabajo local, importación y exportación de archivos y guía de setup Debian.">
+  <title>OpenWeb Linux — Terminal</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #10120f;
+      --panel: #171a16;
+      --line: #30362e;
+      --text: #edf0e8;
+      --muted: #929a8b;
+      --lime: #c6f36b;
+      --mono: "Cascadia Code", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      --sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; min-height: 100%; margin: 0; }
+    body { overflow: hidden; background: var(--bg); color: var(--text); font: 13px var(--sans); }
+    button, input { font: inherit; }
+    button { color: inherit; }
+    .app { display: flex; width: 100%; height: 100vh; height: 100dvh; flex-direction: column; }
+    .topbar {
+      z-index: 2; display: flex; height: 54px; flex: 0 0 54px; align-items: center;
+      justify-content: space-between; gap: 14px; padding: 0 18px;
+      border-bottom: 1px solid var(--line); background: #151813;
+    }
+    .brand { display: flex; min-width: 0; align-items: center; gap: 10px; font-size: 13px; font-weight: 650; letter-spacing: -.025em; }
+    .brand-mark { display: grid; width: 27px; height: 27px; place-items: center; border: 1px solid #435333; border-radius: 7px; color: var(--lime); font: 700 12px var(--mono); }
+    .session-status { display: flex; align-items: center; gap: 8px; margin-left: 12px; color: var(--muted); font-size: 11px; font-weight: 400; letter-spacing: 0; }
+    .status-dot { width: 7px; height: 7px; border-radius: 50%; background: #e4b75b; box-shadow: 0 0 9px #e4b75b55; }
+    .toolbar { display: flex; align-items: center; gap: 7px; }
+    .tool-button {
+      display: inline-flex; min-height: 32px; align-items: center; justify-content: center; gap: 7px;
+      padding: 0 10px; border: 1px solid #343a30; border-radius: 6px; background: #1b1f19;
+      color: #c4cabc; cursor: pointer; font-size: 11px; transition: .15s ease;
+    }
+    .tool-button:hover { border-color: #616d54; color: var(--text); }
+    .tool-button svg { width: 14px; height: 14px; }
+    .tool-button .button-label { white-space: nowrap; }
+    .tool-button.account-button { border-color: #405033; color: var(--lime); }
+    .terminal-window { display: flex; min-height: 0; flex: 1; flex-direction: column; background: #0d0f0c; }
+    .terminal-bar {
+      display: flex; height: 38px; flex: 0 0 38px; align-items: center; justify-content: space-between;
+      padding: 0 14px; border-bottom: 1px solid #252a23; background: #131611;
+    }
+    .window-controls { display: flex; gap: 6px; }
+    .window-controls i { width: 8px; height: 8px; border-radius: 50%; background: #51594b; }
+    .window-controls i:first-child { background: #e77968; }
+    .window-controls i:nth-child(2) { background: #e2bb58; }
+    .window-controls i:nth-child(3) { background: #96c95d; }
+    .terminal-title { color: #858d7d; font: 10px var(--mono); }
+    .terminal-scroll {
+      flex: 1; overflow: auto; padding: clamp(17px, 4vw, 38px) clamp(16px, 5vw, 58px);
+      scrollbar-color: #394032 transparent; scrollbar-width: thin;
+    }
+    .terminal-content { width: min(100%, 1080px); min-height: 100%; margin: 0 auto; color: #dce1d5; font: 13px/1.85 var(--mono); overflow-wrap: anywhere; }
+    .vm-container { display: none; width: calc(100% + clamp(32px, 10vw, 116px)); height: calc(100% + clamp(34px, 8vw, 76px)); min-height: 100%; margin: calc(-1 * clamp(17px, 4vw, 38px)) calc(-1 * clamp(16px, 5vw, 58px)); align-items: center; justify-content: center; overflow: auto; background: #050605; }
+    #vm-screen { width: 100%; min-height: 100%; display: flex; align-items: center; justify-content: center; overflow: auto; outline: none; }
+    #vm-screen > div { max-width: 100%; color: #ddd; }
+    #vm-screen canvas { max-width: 100%; max-height: 100%; object-fit: contain; }
+    .line { min-height: 1.85em; white-space: pre-wrap; }
+    .line.muted { color: #818a79; }
+    .line.green { color: var(--lime); }
+    .line.error { color: #efa18e; }
+    .line.blue { color: #9cc9e8; }
+    .prompt-line { display: flex; align-items: baseline; gap: 0; }
+    .prompt-user { color: var(--lime); }
+    .prompt-path { color: #8fc9e6; }
+    .prompt-symbol { color: #cbd1c1; padding: 0 9px; }
+    #command-input { min-width: 30px; flex: 1; padding: 0; border: 0; outline: 0; background: transparent; color: #edf0e8; caret-color: var(--lime); font: inherit; }
+    #command-input::selection { background: #52663b; }
+    .bottom-bar {
+      display: flex; min-height: 31px; flex: 0 0 31px; align-items: center; justify-content: space-between; gap: 12px;
+      padding: 0 14px; border-top: 1px solid #252a23; background: #131611; color: #7d8576; font: 10px var(--mono);
+    }
+    .bottom-hint { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .modal-backdrop {
+      position: fixed; z-index: 5; inset: 0; display: none; align-items: center; justify-content: center;
+      padding: 20px; background: rgba(4,6,4,.75); backdrop-filter: blur(6px);
+    }
+    .modal-backdrop.open { display: flex; }
+    .dialog {
+      width: min(540px, 100%); max-height: min(760px, 90vh); overflow: auto; padding: 24px;
+      border: 1px solid #394033; border-radius: 10px; background: #171a16;
+      box-shadow: 0 24px 90px #0009;
+    }
+    .dialog-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 15px; }
+    .dialog h1 { margin: 0; font-size: 19px; letter-spacing: -.04em; }
+    .dialog .intro { margin: 10px 0 20px; color: var(--muted); font-size: 12px; line-height: 1.7; }
+    .close-button { display: grid; width: 28px; height: 28px; flex: 0 0 28px; place-items: center; border: 1px solid #343a30; border-radius: 6px; background: transparent; color: #b4bcaa; cursor: pointer; }
+    .close-button:hover { color: white; }
+    .close-button svg { width: 14px; height: 14px; }
+    .notice { margin: 0 0 18px; padding: 12px 13px; border: 1px solid #51442b; border-radius: 6px; background: #292217; color: #dfc991; font-size: 11px; line-height: 1.65; }
+    .setup-list { display: grid; gap: 0; margin: 0 0 20px; padding: 0; list-style: none; counter-reset: setup; }
+    .setup-list li { position: relative; min-height: 42px; padding: 8px 0 8px 34px; border-bottom: 1px solid #292e27; color: #d4d9cd; font-size: 12px; line-height: 1.55; counter-increment: setup; }
+    .setup-list li:before { position: absolute; left: 0; top: 8px; color: var(--lime); content: "0" counter(setup); font: 10px var(--mono); }
+    .command-list { display: grid; gap: 8px; }
+    .command-example { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 11px; border: 1px solid #30362e; border-radius: 6px; background: #10130f; }
+    .command-example code { color: var(--lime); font: 11px var(--mono); }
+    .command-example button { border: 0; background: transparent; color: #a9b19e; cursor: pointer; font-size: 10px; }
+    .command-example button:hover { color: var(--lime); }
+    .dialog-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
+    .primary-button { min-height: 35px; padding: 0 13px; border: 1px solid var(--lime); border-radius: 6px; background: var(--lime); color: #182011; cursor: pointer; font-size: 11px; font-weight: 700; }
+    .primary-button:hover { background: #d5ff85; }
+    .secondary-button { min-height: 35px; padding: 0 13px; border: 1px solid #3a4135; border-radius: 6px; background: #1d211b; color: #e1e5db; cursor: pointer; font-size: 11px; }
+    .secondary-button:hover { border-color: #67745b; }
+    .auth-provider-list { display: grid; gap: 9px; }
+    .auth-provider {
+      display: flex; min-height: 43px; align-items: center; gap: 11px; padding: 0 13px;
+      border: 1px solid #353b31; border-radius: 6px; background: #1c201b; color: #c8cec0; font-size: 12px;
+    }
+    .auth-provider:disabled, .cloud-button:disabled { cursor: not-allowed; opacity: .45; }
+    .auth-provider:not(:disabled), .cloud-button:not(:disabled) { cursor: pointer; }
+    .auth-provider:not(:disabled):hover, .cloud-button:not(:disabled):hover { border-color: #67745b; color: var(--text); }
+    .provider-mark { display: grid; width: 20px; place-items: center; color: #f0f2e9; font: 700 11px var(--mono); }
+    .auth-setup-note { margin: 14px 0 0; color: var(--muted); font-size: 11px; line-height: 1.7; }
+    .auth-doc-links { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 10px; font-size: 10px; }
+    .auth-doc-links a { color: var(--lime); text-decoration: underline; text-underline-offset: 3px; }
+    .backend-config { display: grid; gap: 9px; margin-top: 18px; padding-top: 15px; border-top: 1px solid #30362e; }
+    .backend-config summary { color: #c7cec0; cursor: pointer; font-size: 11px; font-weight: 650; }
+    .backend-config label, .snapshot-form label { display: grid; gap: 5px; color: #abb3a2; font-size: 10px; }
+    .backend-config input, .snapshot-form input {
+      width: 100%; min-height: 36px; padding: 8px 10px; border: 1px solid #384033; border-radius: 5px;
+      outline: none; background: #10130f; color: var(--text); font: 11px var(--mono);
+    }
+    .backend-config input:focus, .snapshot-form input:focus { border-color: var(--lime); }
+    .backend-config .helper { margin: 0; color: #7f8878; font-size: 10px; line-height: 1.6; }
+    .cloud-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 16px; }
+    .auth-provider-list[hidden], .auth-setup-note[hidden], .auth-doc-links[hidden], .backend-config[hidden], .cloud-actions[hidden], #signout-button[hidden], #account-notice[hidden] { display: none; }
+    .cloud-button { min-height: 36px; border: 1px solid #3a4135; border-radius: 6px; background: #1d211b; color: #e1e5db; font-size: 11px; }
+    .snapshot-form { display: grid; gap: 13px; }
+    .snapshot-form .helper { margin: 0; color: var(--muted); font-size: 10px; line-height: 1.6; }
+    .account-actions { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 14px; }
+    .account-message { min-height: 17px; margin: 8px 0 0; color: var(--muted); font-size: 10px; line-height: 1.6; }
+    .toast {
+      position: fixed; z-index: 8; right: 18px; bottom: 46px; max-width: min(400px, calc(100vw - 36px));
+      padding: 11px 14px; transform: translateY(10px); border: 1px solid #3d4932; border-radius: 7px;
+      background: #20271a; color: #dce7cb; font-size: 11px; line-height: 1.5; opacity: 0; pointer-events: none; transition: .18s ease;
+    }
+    .toast.show { transform: translateY(0); opacity: 1; }
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+    @media (max-width: 620px) {
+      .topbar { height: 50px; flex-basis: 50px; padding: 0 10px; gap: 5px; }
+      .brand { gap: 7px; font-size: 11px; }
+      .brand-mark { width: 24px; height: 24px; font-size: 10px; }
+      .session-status { display: none; }
+      .session-status { gap: 5px; margin-left: 2px; font-size: 9px; }
+      .toolbar { gap: 4px; }
+      .tool-button { width: 31px; min-height: 30px; padding: 0; }
+      .tool-button .button-label { display: none; }
+      .terminal-bar { height: 33px; flex-basis: 33px; padding: 0 10px; }
+      .terminal-content { font-size: 11px; }
+      .bottom-bar { padding: 0 9px; font-size: 9px; }
+      .dialog { padding: 20px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">ow</span>
+        <span>OpenWeb Linux</span>
+        <span class="session-status"><i class="status-dot" aria-hidden="true"></i>Espacio del navegador</span>
+      </div>
+      <nav class="toolbar" aria-label="Acciones de terminal">
+        <button class="tool-button account-button" id="account-button" type="button" title="Cuenta y sincronización" aria-label="Cuenta y sincronización">
+          <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><circle cx="10" cy="6.5" r="3" stroke="currentColor" stroke-width="1.4"/><path d="M4 17c.5-3 2.5-4.5 6-4.5s5.5 1.5 6 4.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg><span class="button-label">Sesión local</span>
+        </button>
+        <button class="tool-button" id="boot-button" type="button" title="Arrancar instalador Debian" aria-label="Arrancar instalador Debian">
+          <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="m7 4 9 6-9 6V4Z" fill="currentColor"/></svg><span class="button-label">Arrancar Debian</span>
+        </button>
+        <button class="tool-button" id="apt-button" type="button" title="Ayuda de apt" aria-label="Ayuda de apt">
+          <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4 5h12M4 10h12M4 15h12M7 3v4m6 1v4m-4 1v4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span class="button-label">apt</span>
+        </button>
+        <button class="tool-button" id="setup-button" type="button" title="Configurar Debian" aria-label="Configurar Debian">
+          <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M10 2.5v2m0 11v2m7.5-7.5h-2m-11 0h-2m12.8-5.3-1.4 1.4M6.1 13.9l-1.4 1.4m10.6 0-1.4-1.4M6.1 6.1 4.7 4.7" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><circle cx="10" cy="10" r="3" stroke="currentColor" stroke-width="1.4"/></svg><span class="button-label">Setup</span>
+        </button>
+        <button class="tool-button" id="restore-button" type="button" title="Restaurar espacio de trabajo" aria-label="Restaurar espacio de trabajo">
+          <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M10 13V3m0 0L6.5 6.5M10 3l3.5 3.5M4 12v4h12v-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="button-label">Abrir</span>
+        </button>
+        <button class="tool-button" id="save-button" type="button" title="Descargar copia del espacio de trabajo" aria-label="Guardar espacio de trabajo">
+          <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M10 3v10m0 0 3.5-3.5M10 13 6.5 9.5M4 13v4h12v-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="button-label">Guardar</span>
+        </button>
+        <button class="tool-button" id="fullscreen-button" type="button" title="Pantalla completa" aria-label="Pantalla completa">
+          <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M7 3H3v4m10-4h4v4M3 13v4h4m10-4v4h-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="button-label">Pantalla completa</span>
+        </button>
+      </nav>
+    </header>
+
+    <main class="terminal-window" aria-label="Terminal web">
+      <div class="terminal-bar">
+        <span class="window-controls" aria-hidden="true"><i></i><i></i><i></i></span>
+        <span class="terminal-title">openweb — browser workspace</span>
+        <span class="terminal-title">web</span>
+      </div>
+      <div class="terminal-scroll" id="terminal-scroll">
+        <div class="terminal-content" id="terminal-content" aria-live="polite" aria-label="Salida de la terminal"></div>
+        <div class="vm-container" id="vm-container">
+          <div id="vm-screen" tabindex="0" aria-label="Pantalla de la máquina virtual Debian">
+            <div style="white-space:pre;font:14px monospace;line-height:14px"></div>
+            <canvas style="display:none"></canvas>
+          </div>
+        </div>
+      </div>
+      <div class="bottom-bar">
+        <span class="bottom-hint">help · save · apt</span>
+        <span id="storage-status">Guardado local activado</span>
+      </div>
+    </main>
+  </div>
+
+  <div class="modal-backdrop" id="setup-modal" role="presentation">
+    <section class="dialog" role="dialog" aria-modal="true" aria-labelledby="setup-title">
+      <div class="dialog-header">
+        <div><h1 id="setup-title">Setup de Debian en la web</h1><p class="intro">Para tener una terminal Debian real y ejecutar apt, la página necesita arrancar una máquina virtual x86 dentro del navegador.</p></div>
+        <button class="close-button" type="button" data-close aria-label="Cerrar"><svg viewBox="0 0 20 20" fill="none"><path d="m5 5 10 10M15 5 5 15" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button>
+      </div>
+      <p class="notice"><strong>Instalador de red, no sistema live:</strong> al arrancar se ejecuta el instalador Debian 12 i386 con 512 MiB de RAM y un disco virtual temporal de 1 GiB para pruebas de instalación mínima. Debes completar la instalación antes de tener un Debian normal con apt; el disco se pierde al cerrar o recargar salvo que guardes el estado.</p>
+      <ol class="setup-list">
+        <li>Pulsa <strong>Arrancar Debian</strong>, haz clic dentro de la pantalla virtual para enviarle el teclado y sigue el instalador; selecciona la unidad virtual para instalar.</li>
+        <li>Para descargar paquetes, el instalador usa un relay público de red y los repositorios Debian. No uses contraseñas ni datos sensibles durante esa conexión.</li>
+        <li>Al terminar, el sistema instalado y tus cambios siguen en memoria hasta que cierres o recargues la página.</li>
+        <li>Usa <strong>Guardar</strong> para exportar el estado completo de v86 (.bin) y <strong>Abrir</strong> para restaurarlo. El archivo puede ser muy grande.</li>
+      </ol>
+      <div class="dialog-actions"><button class="secondary-button" type="button" data-close>Entendido</button></div>
+    </section>
+  </div>
+
+  <div class="modal-backdrop" id="apt-modal" role="presentation">
+    <section class="dialog" role="dialog" aria-modal="true" aria-labelledby="apt-title">
+      <div class="dialog-header">
+        <div><h1 id="apt-title">apt · paquetes Debian</h1><p class="intro">Cuando termine la instalación y estés en la terminal Debian, puedes usar estos comandos. La ISO incluida abre el instalador de red, no un escritorio live.</p></div>
+        <button class="close-button" type="button" data-close aria-label="Cerrar"><svg viewBox="0 0 20 20" fill="none"><path d="m5 5 10 10M15 5 5 15" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button>
+      </div>
+      <div class="command-list">
+        <div class="command-example"><code>sudo apt update</code><button type="button" data-command="sudo apt update">Copiar</button></div>
+        <div class="command-example"><code>sudo apt upgrade</code><button type="button" data-command="sudo apt upgrade">Copiar</button></div>
+        <div class="command-example"><code>sudo apt install &lt;paquete&gt;</code><button type="button" data-command="sudo apt install ">Copiar</button></div>
+        <div class="command-example"><code>apt list --installed</code><button type="button" data-command="apt list --installed">Copiar</button></div>
+      </div>
+      <div class="dialog-actions"><button class="secondary-button" type="button" data-close>Cerrar</button></div>
+    </section>
+  </div>
+  <div class="modal-backdrop" id="account-modal" role="presentation">
+    <section class="dialog" role="dialog" aria-modal="true" aria-labelledby="account-title">
+      <div class="dialog-header">
+        <div><h1 id="account-title">Conserva tu entorno</h1><p class="intro" id="account-description">Conecta tu cuenta para guardar la máquina virtual cifrada y recuperarla en otro dispositivo.</p></div>
+        <button class="close-button" type="button" data-close aria-label="Cerrar"><svg viewBox="0 0 20 20" fill="none"><path d="m5 5 10 10M15 5 5 15" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button>
+      </div>
+      <p class="notice" id="account-notice"><strong>Hace falta conectar un proyecto Supabase.</strong> Las claves publicables no son contraseñas; nunca pongas aquí una clave service_role ni un secreto OAuth.</p>
+      <div class="auth-provider-list" aria-label="Proveedores de inicio de sesión">
+        <button class="auth-provider" type="button" data-provider="google" disabled><span class="provider-mark" aria-hidden="true">G</span>Continuar con Google</button>
+        <button class="auth-provider" type="button" data-provider="github" disabled><span class="provider-mark" aria-hidden="true">GH</span>Continuar con GitHub</button>
+      </div>
+      <p class="auth-setup-note">Después de iniciar sesión, solo el usuario propietario podrá leer o sobrescribir su snapshot. Se cifra en tu navegador con una frase secreta antes de subirlo: guárdala aparte, porque no se puede recuperar.</p>
+      <div class="auth-doc-links">
+        <a href="https://supabase.com/docs/guides/auth/social-login/auth-google" target="_blank" rel="noreferrer">Google ↗</a>
+        <a href="https://supabase.com/docs/guides/auth/social-login/auth-github" target="_blank" rel="noreferrer">GitHub ↗</a>
+      </div>
+      <details class="backend-config" id="backend-config">
+        <summary>Configurar tu proyecto Supabase</summary>
+        <form id="backend-config-form">
+          <label>Project URL
+            <input id="supabase-url" type="url" inputmode="url" placeholder="https://tu-proyecto.supabase.co" autocomplete="url" required>
+          </label>
+          <label>Publishable key / anon key
+            <input id="supabase-key" type="password" autocomplete="off" placeholder="sb_publishable_… o anon key heredada" required>
+          </label>
+          <p class="helper">Obtén ambos valores en Supabase → Project Settings → API. La publishable/anon key es pública; el secreto service_role nunca debe usarse en el navegador. Estos valores se guardan solo en este navegador.</p>
+          <button class="primary-button" type="submit">Conectar proyecto</button>
+        </form>
+      </details>
+      <div class="cloud-actions" id="cloud-actions" hidden>
+        <button class="cloud-button" id="cloud-save" type="button">Guardar VM cifrada</button>
+        <button class="cloud-button" id="cloud-restore" type="button">Restaurar VM</button>
+      </div>
+      <div class="account-actions">
+        <p class="account-message" id="account-message" role="status" aria-live="polite">Sin conexión con un backend.</p>
+        <button class="secondary-button" id="signout-button" type="button" hidden>Cerrar sesión</button>
+      </div>
+      <div class="dialog-actions"><button class="secondary-button" type="button" data-close>Entendido</button></div>
+    </section>
+  </div>
+  <div class="modal-backdrop" id="snapshot-modal" role="presentation">
+    <section class="dialog" role="dialog" aria-modal="true" aria-labelledby="snapshot-title">
+      <div class="dialog-header">
+        <div><h1 id="snapshot-title">Cifrar respaldo</h1><p class="intro" id="snapshot-description">Define una frase secreta para cifrar el snapshot antes de subirlo.</p></div>
+        <button class="close-button" type="button" data-close aria-label="Cerrar"><svg viewBox="0 0 20 20" fill="none"><path d="m5 5 10 10M15 5 5 15" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button>
+      </div>
+      <form class="snapshot-form" id="snapshot-form">
+        <label>Frase secreta (mínimo 12 caracteres)
+          <input id="snapshot-passphrase" type="password" minlength="12" autocomplete="new-password" required>
+        </label>
+        <p class="helper">Se usa para cifrado AES-GCM en tu navegador y nunca se envía al servidor. La necesitarás para restaurar. Si la pierdes, el snapshot no se puede recuperar.</p>
+        <div class="dialog-actions">
+          <button class="secondary-button" type="button" data-close>Cancelar</button>
+          <button class="primary-button" id="snapshot-submit" type="submit">Continuar</button>
+        </div>
+      </form>
+    </section>
+  </div>
+  <input class="sr-only" id="restore-input" type="file" accept="application/json,.json,application/octet-stream,.bin" aria-label="Seleccionar archivo de espacio de trabajo o estado de v86">
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    (() => {
+      "use strict";
+
+      const STORAGE_KEY = "openweb-linux-workspace-v1";
+      const output = document.getElementById("terminal-content");
+      const scroll = document.getElementById("terminal-scroll");
+      const restoreInput = document.getElementById("restore-input");
+      const storageStatus = document.getElementById("storage-status");
+      const toast = document.getElementById("toast");
+      const files = Object.assign(Object.create(null), { "README.txt": "Bienvenido a OpenWeb Linux.\nEste espacio de archivos se guarda en este navegador.\nUsa help para ver los comandos disponibles.\n" });
+      const directories = new Set(["/"]);
+      const history = [];
+      let emulator = null;
+      let vmRunning = false;
+      let supabase = null;
+      let supabaseConfig = null;
+      let cloudAction = null;
+      let currentPath = "/";
+      let historyIndex = 0;
+      let toastTimer;
+
+      function showToast(message) {
+        toast.textContent = message;
+        toast.classList.add("show");
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => toast.classList.remove("show"), 3200);
+      }
+
+      function appendLine(text, kind) {
+        const line = document.createElement("div");
+        line.className = "line" + (kind ? " " + kind : "");
+        line.textContent = text;
+        output.appendChild(line);
+      }
+
+      function addPrompt(command) {
+        const line = document.createElement("div");
+        line.className = "line";
+        const user = document.createElement("span");
+        user.className = "prompt-user";
+        user.textContent = "openweb@browser";
+        const path = document.createElement("span");
+        path.className = "prompt-path";
+        path.textContent = ":" + currentPath;
+        const symbol = document.createElement("span");
+        symbol.className = "prompt-symbol";
+        symbol.textContent = "$";
+        line.append(user, path, symbol, document.createTextNode(command));
+        output.appendChild(line);
+      }
+
+      function saveLocal() {
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: 1, files, directories: [...directories], currentPath, history: history.slice(-100) }));
+          storageStatus.textContent = "Cambios guardados en este navegador";
+          return true;
+        } catch (error) {
+          storageStatus.textContent = "No se pudo guardar localmente";
+          showToast("No se pudo guardar en el navegador. Descarga una copia antes de cerrar.");
+          return false;
+        }
+      }
+
+      function normalizePath(path) {
+        const absolute = path.startsWith("/") ? path : currentPath.replace(/\/$/, "") + "/" + path;
+        const parts = [];
+        absolute.split("/").forEach(part => {
+          if (!part || part === ".") return;
+          if (part === "..") parts.pop();
+          else parts.push(part);
+        });
+        return "/" + parts.join("/");
+      }
+
+      function childrenOf(path) {
+        const prefix = path === "/" ? "/" : path.replace(/\/$/, "") + "/";
+        const found = new Set();
+        directories.forEach(directory => {
+          if (directory === path || !directory.startsWith(prefix)) return;
+          const rest = directory.slice(prefix.length);
+          if (rest) found.add(rest.split("/")[0] + "/");
+        });
+        Object.keys(files).forEach(file => {
+          if (!file.startsWith(prefix)) return;
+          const rest = file.slice(prefix.length);
+          if (rest) found.add(rest.split("/")[0] + (rest.includes("/") ? "/" : ""));
+        });
+        return [...found].sort((a, b) => a.localeCompare(b));
+      }
+
+      function execute(raw) {
+        const input = raw.trim();
+        addPrompt(raw);
+        if (!input) return;
+        history.push(raw);
+        historyIndex = history.length;
+        const [command, ...args] = input.split(/\s+/);
+        const argument = args.join(" ");
+
+        switch (command) {
+          case "help":
+            appendLine("Comandos del espacio web (no es una shell Debian):", "muted");
+            appendLine("  help                 mostrar esta ayuda");
+            appendLine("  pwd                  mostrar la carpeta actual");
+            appendLine("  ls [ruta]            listar archivos");
+            appendLine("  cat <archivo>        leer un archivo");
+            appendLine("  write <archivo> <texto>  crear o reemplazar un archivo");
+            appendLine("  mkdir <carpeta>      crear una carpeta");
+            appendLine("  cd [carpeta]         cambiar de carpeta");
+            appendLine("  rm <archivo>         borrar un archivo");
+            appendLine("  clear                limpiar la pantalla");
+            appendLine("  save                 descargar un respaldo JSON");
+            appendLine("  apt ...              ver requisitos para usar apt en Debian");
+            appendLine("Usa Guardar/Abrir para exportar o restaurar el espacio.", "muted");
+            break;
+          case "pwd":
+            appendLine(currentPath);
+            break;
+          case "ls": {
+            const path = normalizePath(args[0] || ".");
+            const entries = childrenOf(path);
+            if (path !== "/" && !Object.keys(files).some(file => file.startsWith(path.replace(/\/$/, "") + "/"))) appendLine("ls: no existe el directorio: " + path, "error");
+            else appendLine(entries.join("  ") || "(vacío)");
+            break;
+          }
+          case "cat": {
+            if (!argument) { appendLine("uso: cat <archivo>", "error"); break; }
+            const path = normalizePath(args[0]);
+            if (!Object.prototype.hasOwnProperty.call(files, path.slice(1))) appendLine("cat: no existe el archivo: " + path, "error");
+            else files[path.slice(1)].split("\n").forEach(part => appendLine(part));
+            break;
+          }
+          case "write": {
+            const match = input.match(/^write\s+(\S+)\s*([\s\S]*)$/);
+            if (!match) { appendLine("uso: write <archivo> <texto>", "error"); break; }
+            const path = normalizePath(match[1]).slice(1);
+            if (!path) { appendLine("write: indica el nombre de un archivo.", "error"); break; }
+            files[path] = match[2] + "\n";
+            appendLine("Guardado: " + path, "green");
+            break;
+          }
+          case "mkdir": {
+            if (!argument) { appendLine("uso: mkdir <carpeta>", "error"); break; }
+            const path = normalizePath(args[0]);
+            const parent = path.slice(0, path.lastIndexOf("/")) || "/";
+            if (directories.has(path)) appendLine("mkdir: ya existe: " + path, "error");
+            else if (!directories.has(parent)) appendLine("mkdir: no existe el directorio padre: " + parent, "error");
+            else { directories.add(path); appendLine("Directorio creado: " + path, "green"); }
+            break;
+          }
+          case "cd": {
+            const path = normalizePath(args[0] || "/");
+            if (!directories.has(path)) appendLine("cd: no existe el directorio: " + path, "error");
+            else currentPath = path;
+            break;
+          }
+          case "rm": {
+            if (!argument) { appendLine("uso: rm <archivo>", "error"); break; }
+            const path = normalizePath(args[0]).slice(1);
+            if (!Object.prototype.hasOwnProperty.call(files, path)) appendLine("rm: no existe el archivo: /" + path, "error");
+            else { delete files[path]; appendLine("Eliminado: " + path, "green"); }
+            break;
+          }
+          case "clear":
+            output.replaceChildren();
+            break;
+          case "save":
+            downloadWorkspace();
+            appendLine("Respaldo JSON descargado.", "green");
+            break;
+          case "apt":
+            appendLine("apt no se ejecutó: esta página aún no tiene una VM Debian conectada.", "error");
+            appendLine("Abre Setup para ver qué se necesita; apt funcionará dentro del Debian arrancado.", "muted");
+            break;
+          case "sudo":
+            if (args[0] === "apt") {
+              appendLine("apt no se ejecutó: esta página aún no tiene una VM Debian conectada.", "error");
+              appendLine("Abre Setup para ver los requisitos de arranque de Debian.", "muted");
+            } else appendLine("sudo solo estará disponible dentro de la VM Debian.", "error");
+            break;
+          default:
+            appendLine(command + ": comando no disponible en el espacio web. Escribe help.", "error");
+        }
+        saveLocal();
+        scroll.scrollTop = scroll.scrollHeight;
+      }
+
+      function downloadWorkspace() {
+        const data = JSON.stringify({ app: "OpenWeb Linux browser workspace", version: 1, exportedAt: new Date().toISOString(), files, directories: [...directories], currentPath, history: history.slice(-100) }, null, 2);
+        const url = URL.createObjectURL(new Blob([data], { type: "application/json" }));
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = "openweb-linux-workspace.json";
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      }
+
+      function focusPrompt() {
+        const old = document.getElementById("command-input");
+        if (old) old.remove();
+        const line = document.createElement("div");
+        line.className = "line prompt-line";
+        const user = document.createElement("span");
+        user.className = "prompt-user";
+        user.textContent = "openweb@browser";
+        const path = document.createElement("span");
+        path.className = "prompt-path";
+        path.textContent = ":" + currentPath;
+        const symbol = document.createElement("span");
+        symbol.className = "prompt-symbol";
+        symbol.textContent = "$";
+        const input = document.createElement("input");
+        input.id = "command-input";
+        input.autocomplete = "off";
+        input.autocapitalize = "off";
+        input.spellcheck = false;
+        input.setAttribute("aria-label", "Comando de terminal");
+        line.append(user, path, symbol, input);
+        output.appendChild(line);
+        input.addEventListener("keydown", event => {
+          if (event.key === "Enter") {
+            const value = input.value;
+            line.remove();
+            execute(value);
+            focusPrompt();
+            scroll.scrollTop = scroll.scrollHeight;
+          } else if (event.key === "ArrowUp") {
+            event.preventDefault();
+            if (historyIndex > 0) input.value = history[--historyIndex];
+          } else if (event.key === "ArrowDown") {
+            event.preventDefault();
+            if (historyIndex < history.length - 1) input.value = history[++historyIndex];
+            else { historyIndex = history.length; input.value = ""; }
+          }
+        });
+        input.focus();
+      }
+
+      function openModal(id) {
+        document.querySelectorAll(".modal-backdrop.open").forEach(modal => modal.classList.remove("open"));
+        const modal = document.getElementById(id);
+        modal.classList.add("open");
+        modal.querySelector("[data-close]").focus();
+      }
+
+      function setAccountMessage(message) {
+        document.getElementById("account-message").textContent = message;
+      }
+
+      function updateAccountUI(session) {
+        const signedIn = Boolean(session && session.user);
+        document.getElementById("account-button").querySelector(".button-label").textContent = signedIn
+          ? (session.user.email || "Cuenta")
+          : "Cuenta";
+        document.getElementById("account-notice").hidden = signedIn;
+        document.querySelector(".auth-provider-list").hidden = signedIn;
+        document.querySelector(".auth-setup-note").hidden = signedIn;
+        document.querySelector(".auth-doc-links").hidden = signedIn;
+        document.getElementById("backend-config").hidden = signedIn;
+        document.getElementById("cloud-actions").hidden = !signedIn;
+        document.getElementById("signout-button").hidden = !signedIn;
+        if (signedIn) setAccountMessage("Sesión iniciada: " + (session.user.email || session.user.id));
+      }
+
+      function loadSavedBackendConfig() {
+        try {
+          const config = JSON.parse(localStorage.getItem("openweb-supabase-config-v1") || "null");
+          if (!config || typeof config.url !== "string" || typeof config.key !== "string") return null;
+          document.getElementById("supabase-url").value = config.url;
+          document.getElementById("supabase-key").value = config.key;
+          return config;
+        } catch (error) {
+          setAccountMessage("No se pudo leer la configuración guardada: " + error.message);
+          return null;
+        }
+      }
+
+      function isPrivilegedSupabaseKey(key) {
+        if (/^(sb_secret_|service[_-]?role)/i.test(key)) return true;
+        const payload = key.split(".")[1];
+        if (!payload) return false;
+        try {
+          const normalized = payload.replace(/-/g, "+").replace(/_/g, "/");
+          const decoded = JSON.parse(atob(normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "=")));
+          return decoded.role === "service_role";
+        } catch {
+          return false;
+        }
+      }
+
+      async function connectSupabase(config) {
+        const parsed = new URL(config.url);
+        if (parsed.protocol !== "https:" || !parsed.hostname.endsWith(".supabase.co")) {
+          throw new Error("Usa la URL HTTPS del proyecto Supabase (https://<project-ref>.supabase.co).");
+        }
+        if (!config.key.trim() || isPrivilegedSupabaseKey(config.key.trim())) {
+          throw new Error("Usa únicamente la publishable key o anon key del proyecto. Nunca una service_role.");
+        }
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 10000);
+        let settings;
+        try {
+          const response = await fetch(parsed.origin + "/auth/v1/settings", {
+            headers: { apikey: config.key.trim() },
+            signal: controller.signal,
+          });
+          if (!response.ok) throw new Error("Supabase respondió HTTP " + response.status + ". Comprueba la URL y la publishable key.");
+          settings = await response.json();
+        } catch (error) {
+          if (error.name === "AbortError") throw new Error("Supabase no respondió en 10 segundos.");
+          throw error;
+        } finally {
+          clearTimeout(timeout);
+        }
+        const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2.57.4");
+        supabaseConfig = { url: parsed.origin, key: config.key.trim() };
+        supabase = createClient(supabaseConfig.url, supabaseConfig.key, {
+          auth: {
+            persistSession: true,
+            autoRefreshToken: true,
+            detectSessionInUrl: true,
+            flowType: "pkce",
+          },
+        });
+        supabase.auth.onAuthStateChange((event, session) => {
+          updateAccountUI(session);
+          if (event === "SIGNED_IN") showToast("Sesión iniciada. Los snapshots siguen cifrados en tu navegador.");
+          if (event === "SIGNED_OUT") setAccountMessage("Sesión cerrada.");
+        });
+        const { data, error } = await supabase.auth.getSession();
+        if (error) throw error;
+        updateAccountUI(data.session);
+        setAccountMessage(data.session
+          ? "Sesión iniciada: " + (data.session.user.email || data.session.user.id)
+          : "Proyecto conectado. " + (["google", "github"].some(provider => settings.external && settings.external[provider])
+            ? "Elige un proveedor habilitado para iniciar sesión."
+            : "Activa Google o GitHub en Authentication → Providers de Supabase."));
+        document.getElementById("account-notice").hidden = true;
+        document.querySelectorAll("[data-provider]").forEach(button => {
+          button.disabled = !settings.external || settings.external[button.dataset.provider] !== true;
+        });
+      }
+
+      function snapshotKey(passphrase, salt) {
+        return crypto.subtle.importKey("raw", new TextEncoder().encode(passphrase), "PBKDF2", false, ["deriveKey"])
+          .then(key => crypto.subtle.deriveKey(
+            { name: "PBKDF2", salt, iterations: 310000, hash: "SHA-256" },
+            key,
+            { name: "AES-GCM", length: 256 },
+            false,
+            ["encrypt", "decrypt"]
+          ));
+      }
+
+      async function encryptSnapshot(state, passphrase) {
+        const magic = new TextEncoder().encode("OWSNAP01");
+        const salt = crypto.getRandomValues(new Uint8Array(16));
+        const iv = crypto.getRandomValues(new Uint8Array(12));
+        const key = await snapshotKey(passphrase, salt);
+        const ciphertext = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, state));
+        const envelope = new Uint8Array(magic.length + salt.length + iv.length + ciphertext.length);
+        envelope.set(magic, 0);
+        envelope.set(salt, magic.length);
+        envelope.set(iv, magic.length + salt.length);
+        envelope.set(ciphertext, magic.length + salt.length + iv.length);
+        return new Blob([envelope], { type: "application/octet-stream" });
+      }
+
+      async function decryptSnapshot(blob, passphrase) {
+        const envelope = new Uint8Array(await blob.arrayBuffer());
+        const magic = new TextEncoder().encode("OWSNAP01");
+        if (envelope.length < magic.length + 16 + 12 + 16 || !magic.every((value, index) => envelope[index] === value)) {
+          throw new Error("El archivo guardado no es un snapshot cifrado de OpenWeb Linux.");
+        }
+        const salt = envelope.slice(magic.length, magic.length + 16);
+        const iv = envelope.slice(magic.length + 16, magic.length + 28);
+        const ciphertext = envelope.slice(magic.length + 28);
+        const key = await snapshotKey(passphrase, salt);
+        try {
+          return await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, ciphertext);
+        } catch {
+          throw new Error("La frase secreta es incorrecta o el snapshot está dañado.");
+        }
+      }
+
+      async function uploadCloudSnapshot(blob, session) {
+        const { Upload } = await import("https://esm.sh/tus-js-client@4.3.1");
+        const projectUrl = new URL(supabaseConfig.url);
+        const storageHost = projectUrl.hostname.endsWith(".supabase.co")
+          ? projectUrl.hostname.replace(/\.supabase\.co$/, ".storage.supabase.co")
+          : projectUrl.host;
+        const endpoint = projectUrl.protocol + "//" + storageHost + "/storage/v1/upload/resumable";
+        const objectName = session.user.id + "/openweb-linux.ows";
+        await new Promise((resolve, reject) => {
+          const upload = new Upload(blob, {
+            endpoint,
+            retryDelays: [0, 3000, 5000, 10000, 20000],
+            headers: {
+              authorization: "Bearer " + session.access_token,
+              apikey: supabaseConfig.key,
+              "x-upsert": "true",
+            },
+            uploadDataDuringCreation: true,
+            removeFingerprintOnSuccess: true,
+            chunkSize: 6 * 1024 * 1024,
+            metadata: {
+              bucketName: "vm-snapshots",
+              objectName,
+              contentType: "application/octet-stream",
+              cacheControl: "3600",
+              metadata: JSON.stringify({ clientEncrypted: true, format: "OWSNAP01" }),
+            },
+            onError: reject,
+            onProgress: (uploaded, total) => {
+              storageStatus.textContent = "Subiendo snapshot cifrado · " + Math.floor(uploaded / total * 100) + "%";
+            },
+            onSuccess: resolve,
+          });
+          upload.start();
+        });
+      }
+
+      async function saveCloudSnapshot(passphrase) {
+        if (!emulator || !vmRunning) throw new Error("Primero inicia la máquina virtual.");
+        const { data, error } = await supabase.auth.getSession();
+        if (error) throw error;
+        if (!data.session) throw new Error("Inicia sesión antes de guardar en la nube.");
+        const { data: userData, error: userError } = await supabase.auth.getUser();
+        if (userError) throw userError;
+        if (!userData.user || userData.user.id !== data.session.user.id) {
+          throw new Error("La sesión cambió. Inicia sesión de nuevo antes de guardar.");
+        }
+        storageStatus.textContent = "Creando estado de v86…";
+        const state = await emulator.save_state();
+        storageStatus.textContent = "Cifrando snapshot en este dispositivo…";
+        const encrypted = await encryptSnapshot(state, passphrase);
+        await uploadCloudSnapshot(encrypted, data.session);
+        storageStatus.textContent = "Snapshot cifrado guardado en tu cuenta";
+        showToast("Snapshot cifrado guardado en la nube. Conserva tu frase secreta.");
+      }
+
+      async function restoreCloudSnapshot(passphrase) {
+        const { data, error } = await supabase.auth.getSession();
+        if (error) throw error;
+        if (!data.session) throw new Error("Inicia sesión antes de restaurar desde la nube.");
+        const { data: userData, error: userError } = await supabase.auth.getUser();
+        if (userError) throw userError;
+        if (!userData.user) throw new Error("La sesión no tiene un usuario autenticado válido.");
+        storageStatus.textContent = "Descargando tu snapshot privado…";
+        const path = userData.user.id + "/openweb-linux.ows";
+        const { data: blob, error: downloadError } = await supabase.storage.from("vm-snapshots").download(path);
+        if (downloadError) throw downloadError;
+        storageStatus.textContent = "Descifrando snapshot en este dispositivo…";
+        const state = await decryptSnapshot(blob, passphrase);
+        if (!emulator) await bootVM(state);
+        else {
+          emulator.stop();
+          vmRunning = false;
+          await emulator.restore_state(state);
+          emulator.run();
+          vmRunning = true;
+          showVmScreen(true);
+          document.getElementById("boot-button").querySelector(".button-label").textContent = "Pausar Debian";
+          storageStatus.textContent = "Snapshot de la nube restaurado";
+        }
+      }
+
+      function openSnapshotPrompt(action) {
+        if (!supabase) {
+          showToast("Conecta y configura un proyecto Supabase desde Cuenta antes de usar el guardado en la nube.");
+          openModal("account-modal");
+          return;
+        }
+        cloudAction = action;
+        const restoring = action === "restore";
+        document.getElementById("snapshot-title").textContent = restoring ? "Descifrar respaldo" : "Cifrar respaldo";
+        document.getElementById("snapshot-description").textContent = restoring
+          ? "Escribe la misma frase secreta que usaste al guardar."
+          : "Define una frase secreta para cifrar el snapshot antes de subirlo.";
+        document.getElementById("snapshot-submit").textContent = restoring ? "Descifrar y restaurar" : "Cifrar y subir";
+        document.getElementById("snapshot-passphrase").value = "";
+        document.getElementById("snapshot-passphrase").autocomplete = restoring ? "current-password" : "new-password";
+        openModal("snapshot-modal");
+        document.getElementById("snapshot-passphrase").focus();
+      }
+
+      function showVmScreen(visible) {
+        document.getElementById("terminal-content").style.display = visible ? "none" : "";
+        document.getElementById("vm-container").style.display = visible ? "flex" : "none";
+        document.getElementById("vm-screen").focus();
+      }
+
+      function loadV86() {
+        if (window.V86) return Promise.resolve();
+        return new Promise((resolve, reject) => {
+          const script = document.createElement("script");
+          script.src = "./public/vendor/v86/libv86.js";
+          script.onload = () => window.V86 ? resolve() : reject(new Error("El archivo de v86 no expuso su constructor."));
+          script.onerror = () => reject(new Error("No se pudo cargar v86. Abre el sitio mediante HTTPS o localhost."));
+          document.head.appendChild(script);
+        });
+      }
+
+      async function bootVM(state) {
+        if (!window.isSecureContext && location.hostname !== "localhost" && location.hostname !== "127.0.0.1") {
+          throw new Error("v86 necesita HTTPS. Publica el sitio en GitHub Pages o sírvelo desde localhost.");
+        }
+        await loadV86();
+        const { createV86Config } = await import("./v86-config.js");
+        const config = createV86Config(document.getElementById("vm-screen"));
+        config.autostart = !state;
+        emulator = new window.V86(config);
+        emulator.add_listener("download-progress", progress => {
+          if (progress.lengthComputable && progress.total > 0) {
+            const percent = Math.round(progress.loaded / progress.total * 100);
+            storageStatus.textContent = "Cargando " + progress.file_name + " · " + percent + "%";
+          } else {
+            storageStatus.textContent = "Cargando " + progress.file_name;
+          }
+        });
+        emulator.add_listener("download-error", error => {
+          showToast("No se pudo cargar " + error.file_name + ". Revisa la conexión y vuelve a intentarlo.");
+        });
+        await new Promise((resolve, reject) => {
+          const timeout = setTimeout(() => reject(new Error("v86 tardó demasiado en cargar el emulador y la ISO.")), 180000);
+          emulator.add_listener("emulator-ready", () => {
+            clearTimeout(timeout);
+            resolve();
+          });
+        });
+        if (state) {
+          await emulator.restore_state(state);
+          emulator.run();
+        }
+        vmRunning = true;
+        showVmScreen(true);
+        document.getElementById("boot-button").querySelector(".button-label").textContent = "Pausar Debian";
+        document.getElementById("boot-button").title = "Pausar la máquina virtual";
+        document.getElementById("storage-status").textContent = "Instalador Debian iniciado · red mediante relay público";
+        document.querySelector(".session-status").lastChild.textContent = "Instalador Debian";
+      }
+
+      async function saveVMState() {
+        if (!emulator) {
+          downloadWorkspace();
+          saveLocal();
+          showToast("Espacio de trabajo descargado. Se guarda automáticamente en este navegador.");
+          return;
+        }
+        try {
+          storageStatus.textContent = "Creando respaldo de v86…";
+          const state = await emulator.save_state();
+          const url = URL.createObjectURL(new Blob([state], { type: "application/octet-stream" }));
+          const link = document.createElement("a");
+          link.href = url;
+          link.download = "openweb-linux-v86-state.bin";
+          document.body.appendChild(link);
+          link.click();
+          link.remove();
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+          storageStatus.textContent = "Estado de v86 guardado en archivo";
+          showToast("Respaldo de la máquina descargado. Puede ocupar varios GiB.");
+        } catch (error) {
+          storageStatus.textContent = "Falló el respaldo de v86";
+          showToast("No se pudo guardar la máquina: " + error.message);
+        }
+      }
+
+      document.getElementById("boot-button").addEventListener("click", async () => {
+        const button = document.getElementById("boot-button");
+        if (emulator) {
+          if (vmRunning) {
+            emulator.stop();
+            vmRunning = false;
+            showVmScreen(false);
+            button.querySelector(".button-label").textContent = "Reanudar Debian";
+            button.title = "Reanudar la máquina virtual";
+            storageStatus.textContent = "Debian pausado en memoria";
+          } else {
+            emulator.run();
+            vmRunning = true;
+            showVmScreen(true);
+            button.querySelector(".button-label").textContent = "Pausar Debian";
+            button.title = "Pausar la máquina virtual";
+            storageStatus.textContent = "Instalador Debian iniciado · red mediante relay público";
+          }
+          return;
+        }
+        button.disabled = true;
+        storageStatus.textContent = "Iniciando v86 y cargando la ISO de Debian…";
+        try {
+          await bootVM();
+        } catch (error) {
+          if (emulator) emulator.stop();
+          emulator = null;
+          vmRunning = false;
+          storageStatus.textContent = "No se pudo iniciar Debian";
+          showToast("No se pudo iniciar v86: " + error.message);
+        } finally {
+          button.disabled = false;
+        }
+      });
+      document.getElementById("save-button").addEventListener("click", saveVMState);
+      document.getElementById("restore-button").addEventListener("click", () => restoreInput.click());
+      document.getElementById("setup-button").addEventListener("click", () => openModal("setup-modal"));
+      document.getElementById("apt-button").addEventListener("click", () => openModal("apt-modal"));
+      document.getElementById("account-button").addEventListener("click", () => openModal("account-modal"));
+      document.querySelectorAll("[data-provider]").forEach(button => button.addEventListener("click", async () => {
+        try {
+          if (!supabase) throw new Error("Conecta primero tu proyecto Supabase.");
+          const { error } = await supabase.auth.signInWithOAuth({
+            provider: button.dataset.provider,
+            options: { redirectTo: location.origin + location.pathname + location.search },
+          });
+          if (error) throw error;
+        } catch (error) {
+          setAccountMessage("No se pudo iniciar sesión: " + error.message);
+        }
+      }));
+      document.getElementById("backend-config-form").addEventListener("submit", async event => {
+        event.preventDefault();
+        const config = {
+          url: document.getElementById("supabase-url").value.trim().replace(/\/+$/, ""),
+          key: document.getElementById("supabase-key").value.trim(),
+        };
+        try {
+          setAccountMessage("Conectando con Supabase…");
+          await connectSupabase(config);
+          localStorage.setItem("openweb-supabase-config-v1", JSON.stringify(config));
+          document.getElementById("backend-config").open = false;
+          showToast("Proyecto Supabase conectado en este navegador.");
+        } catch (error) {
+          supabase = null;
+          supabaseConfig = null;
+          document.querySelectorAll("[data-provider]").forEach(button => { button.disabled = true; });
+          setAccountMessage("No se pudo conectar el proyecto: " + error.message);
+        }
+      });
+      document.getElementById("signout-button").addEventListener("click", async () => {
+        if (!supabase) return;
+        const { error } = await supabase.auth.signOut();
+        if (error) setAccountMessage("No se pudo cerrar la sesión: " + error.message);
+        else updateAccountUI(null);
+      });
+      document.getElementById("cloud-save").addEventListener("click", () => openSnapshotPrompt("save"));
+      document.getElementById("cloud-restore").addEventListener("click", () => openSnapshotPrompt("restore"));
+      document.getElementById("snapshot-form").addEventListener("submit", async event => {
+        event.preventDefault();
+        const passphrase = document.getElementById("snapshot-passphrase").value;
+        if (passphrase.length < 12) {
+          showToast("Usa una frase secreta de al menos 12 caracteres.");
+          return;
+        }
+        const submit = document.getElementById("snapshot-submit");
+        submit.disabled = true;
+        try {
+          if (cloudAction === "save") await saveCloudSnapshot(passphrase);
+          else await restoreCloudSnapshot(passphrase);
+          document.getElementById("snapshot-modal").classList.remove("open");
+          document.getElementById("account-modal").classList.remove("open");
+        } catch (error) {
+          showToast("No se completó la operación en la nube: " + error.message);
+          setAccountMessage("Error del respaldo: " + error.message);
+          storageStatus.textContent = "Error del respaldo en la nube";
+        } finally {
+          submit.disabled = false;
+          document.getElementById("snapshot-passphrase").value = "";
+          cloudAction = null;
+        }
+      });
+      document.getElementById("fullscreen-button").addEventListener("click", async () => {
+        try {
+          if (!document.fullscreenElement) await document.documentElement.requestFullscreen();
+          else await document.exitFullscreen();
+        } catch (error) {
+          showToast("El navegador no permitió cambiar a pantalla completa.");
+        }
+      });
+      document.querySelectorAll("[data-close]").forEach(button => button.addEventListener("click", () => button.closest(".modal-backdrop").classList.remove("open")));
+      document.querySelectorAll(".modal-backdrop").forEach(backdrop => backdrop.addEventListener("click", event => {
+        if (event.target === backdrop) backdrop.classList.remove("open");
+      }));
+      document.addEventListener("keydown", event => {
+        if (event.key === "Escape") document.querySelectorAll(".modal-backdrop.open").forEach(modal => modal.classList.remove("open"));
+        if (event.key === "Tab" && document.querySelector(".modal-backdrop.open")) {
+          const modal = document.querySelector(".modal-backdrop.open");
+          const controls = [...modal.querySelectorAll("button")];
+          const first = controls[0], last = controls[controls.length - 1];
+          if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+          else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+        }
+      });
+      document.querySelectorAll("[data-command]").forEach(button => button.addEventListener("click", () => {
+        document.querySelectorAll(".modal-backdrop.open").forEach(modal => modal.classList.remove("open"));
+        if (!navigator.clipboard || !window.isSecureContext) {
+          showToast("Abre este sitio por HTTPS para copiar comandos apt.");
+          return;
+        }
+        navigator.clipboard.writeText(button.dataset.command)
+          .then(() => showToast("Comando copiado. Pégalo en la terminal Debian cuando la instalación termine."))
+          .catch(error => showToast("No se pudo copiar el comando: " + error.message));
+      }));
+      restoreInput.addEventListener("change", async () => {
+        const file = restoreInput.files && restoreInput.files[0];
+        if (!file) return;
+        try {
+          if (file.name.toLowerCase().endsWith(".bin")) {
+            const state = await file.arrayBuffer();
+            if (!emulator) await bootVM(state);
+            else {
+              emulator.stop();
+              vmRunning = false;
+              await emulator.restore_state(state);
+              emulator.run();
+              vmRunning = true;
+              showVmScreen(true);
+              document.getElementById("boot-button").querySelector(".button-label").textContent = "Pausar Debian";
+              storageStatus.textContent = "Máquina virtual restaurada";
+            }
+            showToast("Estado de v86 restaurado.");
+            return;
+          }
+          const data = JSON.parse(await file.text());
+          if (!data || data.version !== 1 || !data.files || typeof data.files !== "object" || Array.isArray(data.files)) throw new Error("Formato de respaldo no compatible.");
+          for (const [name, contents] of Object.entries(data.files)) {
+            if (typeof name !== "string" || !name || typeof contents !== "string" || name.startsWith("/") || name.split("/").includes("..")) throw new Error("El respaldo contiene una ruta o archivo no válido.");
+          }
+          for (const name of Object.keys(files)) delete files[name];
+          Object.assign(files, data.files);
+          directories.clear();
+          directories.add("/");
+          if (Array.isArray(data.directories)) data.directories.forEach(name => {
+            if (typeof name === "string" && name.startsWith("/") && !name.split("/").includes("..")) directories.add(normalizePath(name));
+          });
+          if (Array.isArray(data.history)) history.splice(0, history.length, ...data.history.filter(item => typeof item === "string").slice(-100));
+          currentPath = typeof data.currentPath === "string" && data.currentPath.startsWith("/") ? normalizePath(data.currentPath) : "/";
+          output.replaceChildren();
+          appendLine("Espacio de trabajo restaurado desde " + file.name, "green");
+          appendLine("Archivos recuperados: " + Object.keys(files).length, "muted");
+          saveLocal();
+          focusPrompt();
+          showToast("Respaldo restaurado y guardado en este navegador.");
+        } catch (error) {
+          showToast("No se pudo restaurar el respaldo: " + error.message);
+        } finally {
+          restoreInput.value = "";
+        }
+      });
+
+      try {
+        const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
+        if (saved && saved.version === 1 && saved.files && typeof saved.files === "object" && !Array.isArray(saved.files)) {
+          Object.entries(saved.files).forEach(([name, contents]) => {
+            if (name && typeof contents === "string" && !name.startsWith("/") && !name.split("/").includes("..")) files[name] = contents;
+          });
+          if (Array.isArray(saved.directories)) saved.directories.forEach(name => {
+            if (typeof name === "string" && name.startsWith("/") && !name.split("/").includes("..")) directories.add(normalizePath(name));
+          });
+          if (Array.isArray(saved.history)) history.push(...saved.history.filter(item => typeof item === "string").slice(-100));
+          if (typeof saved.currentPath === "string" && saved.currentPath.startsWith("/")) currentPath = normalizePath(saved.currentPath);
+          appendLine("Espacio de trabajo local restaurado.", "green");
+        } else {
+          appendLine("OpenWeb Linux · Terminal de espacio web", "green");
+          appendLine("Tus archivos y respaldos se guardan en este navegador.", "muted");
+        }
+      } catch (error) {
+        appendLine("No se pudo leer el guardado local: " + error.message, "error");
+      }
+      const savedBackendConfig = loadSavedBackendConfig();
+      if (savedBackendConfig) {
+        connectSupabase(savedBackendConfig).catch(error => {
+          supabase = null;
+          supabaseConfig = null;
+          setAccountMessage("No se pudo conectar con Supabase: " + error.message);
+        });
+      }
+      appendLine("Pulsa Arrancar Debian para iniciar el instalador; escribe help para comandos del espacio web.", "muted");
+      focusPrompt();
+    })();
+  </script>
+</body>
+</html>
