@@ -60,6 +60,28 @@
     .window-controls i:nth-child(2) { background: #e2bb58; }
     .window-controls i:nth-child(3) { background: #96c95d; }
     .terminal-title { color: #858d7d; font: 10px var(--mono); }
+    .terminal-tabs {
+      display: flex; min-height: 39px; flex: 0 0 39px; align-items: center; gap: 5px;
+      overflow-x: auto; padding: 0 12px; border-bottom: 1px solid #252a23; background: #11140f;
+      scrollbar-width: thin;
+    }
+    .terminal-tabs[hidden] { display: none; }
+    .terminal-tab {
+      display: inline-flex; min-height: 27px; flex: 0 0 auto; align-items: center; padding: 0 11px;
+      border: 1px solid transparent; border-radius: 5px; background: transparent; color: #9ba392;
+      cursor: pointer; font: 10px var(--mono);
+    }
+    .terminal-tab:hover { color: var(--text); }
+    .terminal-tab[aria-selected="true"] { border-color: #343a30; background: #1a1e17; color: var(--lime); }
+    .terminal-tab-action {
+      display: grid; width: 27px; height: 27px; flex: 0 0 27px; place-items: center;
+      border: 1px solid transparent; border-radius: 5px; background: transparent; color: #9ba392;
+      cursor: pointer; font-size: 16px; line-height: 1;
+    }
+    .terminal-tab-action:hover:not(:disabled) { border-color: #343a30; color: var(--lime); }
+    .terminal-tab-action:disabled { cursor: default; opacity: .4; }
+    .terminal-sessions { display: contents; }
+    .terminal-session[hidden] { display: none; }
     .terminal-scroll {
       flex: 1; overflow: auto; padding: clamp(17px, 4vw, 38px) clamp(16px, 5vw, 58px);
       scrollbar-color: #394032 transparent; scrollbar-width: thin;
@@ -133,6 +155,8 @@
       .tool-button { width: 31px; min-height: 30px; padding: 0; }
       .tool-button .button-label { display: none; }
       .terminal-bar { height: 33px; flex-basis: 33px; padding: 0 10px; }
+      .terminal-tabs { min-height: 35px; flex-basis: 35px; padding: 0 7px; }
+      .terminal-tab { min-height: 25px; padding: 0 8px; font-size: 9px; }
       .terminal-content { font-size: 11px; }
       .bottom-bar { padding: 0 9px; font-size: 9px; }
       .dialog { padding: 20px; }
@@ -178,8 +202,14 @@
         <span class="terminal-title">openweb — browser workspace</span>
         <span class="terminal-title">web</span>
       </div>
+      <div class="terminal-tabs" id="terminal-tabs" role="tablist" aria-label="Pestañas de terminal">
+        <button class="terminal-tab-action" id="new-terminal-tab" type="button" aria-label="Abrir nueva pestaña de terminal" title="Nueva terminal">+</button>
+        <button class="terminal-tab-action" id="close-terminal-tab" type="button" aria-label="Cerrar pestaña de terminal" title="Cerrar terminal">×</button>
+      </div>
       <div class="terminal-scroll" id="terminal-scroll">
-        <div class="terminal-content" id="terminal-content" aria-live="polite" aria-label="Salida de la terminal"></div>
+        <div class="terminal-sessions" id="terminal-sessions">
+          <div class="terminal-content terminal-session" id="terminal-content" role="tabpanel" aria-live="polite" aria-label="Salida de Terminal 1"></div>
+        </div>
         <div class="vm-container" id="vm-container">
           <div id="vm-screen" tabindex="0" aria-label="Pantalla de la máquina virtual Debian">
             <div style="white-space:pre;font:14px monospace;line-height:14px"></div>
@@ -188,7 +218,7 @@
         </div>
       </div>
       <div class="bottom-bar">
-        <span class="bottom-hint">help · save · apt</span>
+        <span class="bottom-hint">help · save · apt · terminales comparten archivos</span>
         <span id="storage-status">Guardado local activado</span>
       </div>
     </main>
@@ -201,6 +231,7 @@
         <button class="close-button" type="button" data-close aria-label="Cerrar"><svg viewBox="0 0 20 20" fill="none"><path d="m5 5 10 10M15 5 5 15" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button>
       </div>
       <p class="notice"><strong>Instalador de red, no sistema live:</strong> al arrancar se ejecuta el instalador Debian 12 i386 con 512 MiB de RAM y un disco virtual temporal de 1 GiB para pruebas de instalación mínima. Debes completar la instalación antes de tener un Debian normal con apt; el disco se pierde al cerrar o recargar salvo que guardes el estado.</p>
+      <p class="guide-note">Para acelerar la instalación, selecciona un mirror Debian cercano y no marques entorno de escritorio. El primer arranque descarga la mini ISO (unos 49 MiB); la descarga de paquetes depende de tu conexión y del mirror. Al enfocar o señalar Arrancar Debian se preparan en segundo plano los archivos del emulador para reducir la espera inicial.</p>
       <ol class="setup-list">
         <li>Pulsa <strong>Arrancar Debian</strong>, haz clic dentro de la pantalla virtual para enviarle el teclado y sigue el instalador; selecciona la unidad virtual para instalar.</li>
         <li>Para descargar paquetes, el instalador usa un relay público de red y los repositorios Debian. No uses contraseñas ni datos sensibles durante esa conexión.</li>
@@ -279,18 +310,22 @@
       const VM_STATE_DATABASE = "openweb-linux-local-vm";
       const VM_STATE_STORE = "state";
       const VM_STATE_KEY = "latest";
-      const output = document.getElementById("terminal-content");
+      let output = document.getElementById("terminal-content");
       const scroll = document.getElementById("terminal-scroll");
+      const terminalTabs = document.getElementById("terminal-tabs");
+      const terminalPanels = document.getElementById("terminal-sessions");
       const restoreInput = document.getElementById("restore-input");
       const storageStatus = document.getElementById("storage-status");
       const toast = document.getElementById("toast");
       const files = Object.assign(Object.create(null), { "README.txt": "Bienvenido a OpenWeb Linux.\nEste espacio de archivos se guarda en este navegador.\nUsa help para ver los comandos disponibles.\n" });
       const directories = new Set(["/"]);
-      const history = [];
+      const terminalSessions = [];
       let emulator = null;
       let vmRunning = false;
       let currentPath = "/";
-      let historyIndex = 0;
+      let activeTerminal = null;
+      let nextTerminalNumber = 1;
+      let vmScreenVisible = false;
       let toastTimer;
 
       function showToast(message) {
@@ -305,6 +340,126 @@
         line.className = "line" + (kind ? " " + kind : "");
         line.textContent = text;
         output.appendChild(line);
+      }
+
+      function renderTerminalTabs() {
+        terminalTabs.querySelectorAll('[role="tab"]').forEach(tab => tab.remove());
+        terminalSessions.forEach(session => {
+          const tab = document.createElement("button");
+          tab.className = "terminal-tab";
+          tab.type = "button";
+          tab.id = "tab-" + session.id;
+          tab.setAttribute("role", "tab");
+          tab.setAttribute("aria-controls", session.output.id);
+          tab.setAttribute("aria-selected", String(session === activeTerminal));
+          tab.tabIndex = session === activeTerminal ? 0 : -1;
+          tab.textContent = session.name;
+          tab.addEventListener("click", () => activateTerminalSession(session));
+          tab.addEventListener("keydown", event => {
+            if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+            event.preventDefault();
+            const currentIndex = terminalSessions.indexOf(session);
+            const targetIndex = event.key === "Home" ? 0
+              : event.key === "End" ? terminalSessions.length - 1
+              : (currentIndex + (event.key === "ArrowRight" ? 1 : -1) + terminalSessions.length) % terminalSessions.length;
+            const target = terminalSessions[targetIndex];
+            activateTerminalSession(target);
+            document.getElementById("tab-" + target.id).focus();
+          });
+          terminalTabs.insertBefore(tab, document.getElementById("new-terminal-tab"));
+          session.output.setAttribute("aria-labelledby", tab.id);
+        });
+        document.getElementById("close-terminal-tab").disabled = terminalSessions.length === 1;
+      }
+
+      function makeTerminalSession(name, sessionOutput) {
+        const session = {
+          id: "terminal-" + nextTerminalNumber++,
+          name,
+          output: sessionOutput,
+          history: [],
+          historyIndex: 0,
+          draft: "",
+        };
+        session.output.id = session.id + "-output";
+        session.output.classList.add("terminal-session");
+        session.output.setAttribute("role", "tabpanel");
+        terminalSessions.push(session);
+        return session;
+      }
+
+      function activateTerminalSession(session, focus = true, persist = true) {
+        const previousInput = output.querySelector("#command-input");
+        if (previousInput) {
+          if (activeTerminal) activeTerminal.draft = previousInput.value;
+          previousInput.remove();
+        }
+        activeTerminal = session;
+        output = session.output;
+        terminalSessions.forEach(item => { item.output.hidden = item !== session; });
+        output.style.display = vmScreenVisible ? "none" : "";
+        renderTerminalTabs();
+        if (!vmScreenVisible && focus) focusPrompt();
+        if (persist) saveLocal();
+      }
+
+      function addTerminalSession() {
+        const sessionOutput = document.createElement("div");
+        sessionOutput.className = "terminal-content terminal-session";
+        terminalPanels.appendChild(sessionOutput);
+        const session = makeTerminalSession("Terminal " + nextTerminalNumber, sessionOutput);
+        session.draft = "";
+        activateTerminalSession(session, true, false);
+        appendLine("Terminal nueva. Los archivos y directorios se comparten entre pestañas.", "muted");
+        focusPrompt();
+        saveLocal();
+      }
+
+      function closeActiveTerminalSession() {
+        if (terminalSessions.length < 2 || !activeTerminal) return;
+        const index = terminalSessions.indexOf(activeTerminal);
+        activeTerminal.output.remove();
+        terminalSessions.splice(index, 1);
+        const next = terminalSessions[Math.min(index, terminalSessions.length - 1)];
+        activeTerminal = null;
+        output = next.output;
+        activateTerminalSession(next, true, false);
+        saveLocal();
+      }
+
+      function saveTerminalSessions() {
+        return {
+          terminalTabs: terminalSessions.map(session => ({
+            name: session.name,
+            history: session.history.slice(-100),
+          })),
+          activeTerminal: terminalSessions.indexOf(activeTerminal),
+        };
+      }
+
+      function restoreTerminalSessions(savedTabs, selectedIndex) {
+        if (!Array.isArray(savedTabs) || !savedTabs.length) return false;
+        const validTabs = savedTabs.filter(tab => tab && typeof tab.name === "string" && Array.isArray(tab.history));
+        if (!validTabs.length) return false;
+        while (terminalSessions.length < validTabs.length) {
+          const sessionOutput = document.createElement("div");
+          sessionOutput.className = "terminal-content terminal-session";
+          terminalPanels.appendChild(sessionOutput);
+          makeTerminalSession("Terminal " + nextTerminalNumber, sessionOutput);
+        }
+        while (terminalSessions.length > validTabs.length) {
+          terminalSessions.pop().output.remove();
+        }
+        validTabs.forEach((saved, index) => {
+          terminalSessions[index].name = saved.name.slice(0, 40);
+          terminalSessions[index].history = saved.history.filter(item => typeof item === "string").slice(-100);
+          terminalSessions[index].historyIndex = terminalSessions[index].history.length;
+        });
+        const index = Number.isInteger(selectedIndex) ? Math.min(Math.max(selectedIndex, 0), terminalSessions.length - 1) : 0;
+        activeTerminal = null;
+        output = terminalSessions[index].output;
+        activateTerminalSession(terminalSessions[index], false, false);
+        return true;
       }
 
       function addPrompt(command) {
@@ -325,7 +480,7 @@
 
       function saveLocal() {
         try {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: 1, files, directories: [...directories], currentPath, history: history.slice(-100) }));
+          localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: 1, files, directories: [...directories], currentPath, history: activeTerminal ? activeTerminal.history.slice(-100) : [], ...saveTerminalSessions() }));
           storageStatus.textContent = "Cambios guardados en este navegador";
           return true;
         } catch (error) {
@@ -419,8 +574,8 @@
         const input = raw.trim();
         addPrompt(raw);
         if (!input) return;
-        history.push(raw);
-        historyIndex = history.length;
+        activeTerminal.history.push(raw);
+        activeTerminal.historyIndex = activeTerminal.history.length;
         const [command, ...args] = input.split(/\s+/);
         const argument = args.join(" ");
 
@@ -539,7 +694,7 @@
       }
 
       function downloadWorkspace() {
-        const data = JSON.stringify({ app: "OpenWeb Linux browser workspace", version: 1, exportedAt: new Date().toISOString(), files, directories: [...directories], currentPath, history: history.slice(-100) }, null, 2);
+        const data = JSON.stringify({ app: "OpenWeb Linux browser workspace", version: 1, exportedAt: new Date().toISOString(), files, directories: [...directories], currentPath, history: activeTerminal.history.slice(-100), ...saveTerminalSessions() }, null, 2);
         const url = URL.createObjectURL(new Blob([data], { type: "application/json" }));
         const link = document.createElement("a");
         link.href = url;
@@ -553,6 +708,7 @@
       function focusPrompt() {
         const old = document.getElementById("command-input");
         if (old) old.remove();
+        const session = activeTerminal;
         const line = document.createElement("div");
         line.className = "line prompt-line";
         const user = document.createElement("span");
@@ -570,22 +726,25 @@
         input.autocapitalize = "off";
         input.spellcheck = false;
         input.setAttribute("aria-label", "Comando de terminal");
+        input.value = session.draft;
+        session.draft = "";
         line.append(user, path, symbol, input);
         output.appendChild(line);
         input.addEventListener("keydown", event => {
           if (event.key === "Enter") {
             const value = input.value;
+            session.draft = "";
             line.remove();
             execute(value);
             focusPrompt();
             scroll.scrollTop = scroll.scrollHeight;
           } else if (event.key === "ArrowUp") {
             event.preventDefault();
-            if (historyIndex > 0) input.value = history[--historyIndex];
+            if (session.historyIndex > 0) input.value = session.history[--session.historyIndex];
           } else if (event.key === "ArrowDown") {
             event.preventDefault();
-            if (historyIndex < history.length - 1) input.value = history[++historyIndex];
-            else { historyIndex = history.length; input.value = ""; }
+            if (session.historyIndex < session.history.length - 1) input.value = session.history[++session.historyIndex];
+            else { session.historyIndex = session.history.length; input.value = ""; }
           }
         });
         input.focus();
@@ -609,26 +768,67 @@
       }
 
       function showVmScreen(visible) {
-        document.getElementById("terminal-content").style.display = visible ? "none" : "";
+        vmScreenVisible = visible;
+        terminalTabs.hidden = visible;
+        output.style.display = visible ? "none" : "";
         document.getElementById("vm-container").style.display = visible ? "flex" : "none";
-        document.getElementById("vm-screen").focus();
+        if (visible) document.getElementById("vm-screen").focus();
+        else {
+          const input = output.querySelector("#command-input");
+          if (input) input.focus();
+        }
       }
+
+      let v86LoadPromise = null;
 
       function loadV86() {
         if (window.V86) return Promise.resolve();
-        return new Promise((resolve, reject) => {
+        if (v86LoadPromise) return v86LoadPromise;
+        v86LoadPromise = new Promise((resolve, reject) => {
           const script = document.createElement("script");
           script.src = "./public/vendor/v86/libv86.js";
-          script.onload = () => window.V86 ? resolve() : reject(new Error("El archivo de v86 no expuso su constructor."));
-          script.onerror = () => reject(new Error("No se pudo cargar v86. Abre el sitio mediante HTTPS o localhost."));
+          script.onload = () => {
+            if (window.V86) resolve();
+            else {
+              script.remove();
+              v86LoadPromise = null;
+              reject(new Error("El archivo de v86 no expuso su constructor."));
+            }
+          };
+          script.onerror = () => {
+            script.remove();
+            v86LoadPromise = null;
+            reject(new Error("No se pudo cargar v86. Abre el sitio mediante HTTPS o localhost."));
+          };
           document.head.appendChild(script);
         });
+        return v86LoadPromise;
+      }
+
+      let installerPreloadPromise = null;
+
+      function preloadInstaller() {
+        if (installerPreloadPromise) return installerPreloadPromise;
+        installerPreloadPromise = Promise.all([
+          loadV86(),
+          import("./v86-config.js"),
+          fetch("./public/vendor/v86/v86.wasm", { cache: "force-cache" }).then(response => {
+            if (!response.ok) throw new Error("No se pudo precargar el motor WebAssembly de v86.");
+            return response.arrayBuffer().then(() => undefined);
+          }),
+        ])
+          .catch(error => {
+            installerPreloadPromise = null;
+            console.warn("No se pudo preparar el emulador en segundo plano; se intentará al arrancar.", error);
+          });
+        return installerPreloadPromise;
       }
 
       async function bootVM(state) {
         if (!window.isSecureContext && location.hostname !== "localhost" && location.hostname !== "127.0.0.1") {
           throw new Error("v86 necesita HTTPS. Publica el sitio en GitHub Pages o sírvelo desde localhost.");
         }
+        if (installerPreloadPromise) await installerPreloadPromise;
         await loadV86();
         const { createV86Config } = await import("./v86-config.js");
         const config = createV86Config(document.getElementById("vm-screen"));
@@ -769,6 +969,10 @@
           button.disabled = false;
         }
       });
+      document.getElementById("boot-button").addEventListener("pointerenter", preloadInstaller, { once: true });
+      document.getElementById("boot-button").addEventListener("focus", preloadInstaller, { once: true });
+      document.getElementById("new-terminal-tab").addEventListener("click", addTerminalSession);
+      document.getElementById("close-terminal-tab").addEventListener("click", closeActiveTerminalSession);
       document.getElementById("save-button").addEventListener("click", openSaveOptions);
       document.getElementById("restore-button").addEventListener("click", () => {
         updateLocalVMRestoreButton().catch(error => showToast("No se pudo consultar el respaldo local: " + error.message));
@@ -872,7 +1076,10 @@
           if (Array.isArray(data.directories)) data.directories.forEach(name => {
             if (typeof name === "string" && name.startsWith("/") && !name.split("/").includes("..")) directories.add(normalizePath(name));
           });
-          if (Array.isArray(data.history)) history.splice(0, history.length, ...data.history.filter(item => typeof item === "string").slice(-100));
+          if (!restoreTerminalSessions(data.terminalTabs, data.activeTerminal) && Array.isArray(data.history)) {
+            activeTerminal.history = data.history.filter(item => typeof item === "string").slice(-100);
+            activeTerminal.historyIndex = activeTerminal.history.length;
+          }
           currentPath = typeof data.currentPath === "string" && data.currentPath.startsWith("/") ? normalizePath(data.currentPath) : "/";
           output.replaceChildren();
           appendLine("Espacio de trabajo restaurado desde " + file.name, "green");
@@ -887,6 +1094,11 @@
         }
       });
 
+      makeTerminalSession("Terminal 1", output);
+      activeTerminal = terminalSessions[0];
+      nextTerminalNumber = 2;
+      renderTerminalTabs();
+
       try {
         const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
         if (saved && saved.version === 1 && saved.files && typeof saved.files === "object" && !Array.isArray(saved.files)) {
@@ -896,7 +1108,10 @@
           if (Array.isArray(saved.directories)) saved.directories.forEach(name => {
             if (typeof name === "string" && name.startsWith("/") && !name.split("/").includes("..")) directories.add(normalizePath(name));
           });
-          if (Array.isArray(saved.history)) history.push(...saved.history.filter(item => typeof item === "string").slice(-100));
+          if (!restoreTerminalSessions(saved.terminalTabs, saved.activeTerminal) && Array.isArray(saved.history)) {
+            activeTerminal.history = saved.history.filter(item => typeof item === "string").slice(-100);
+            activeTerminal.historyIndex = activeTerminal.history.length;
+          }
           if (typeof saved.currentPath === "string" && saved.currentPath.startsWith("/")) currentPath = normalizePath(saved.currentPath);
           appendLine("Espacio de trabajo local restaurado.", "green");
         } else {

@@ -16,6 +16,7 @@ OpenWeb Linux is a browser-based Linux installer focused on accessibility, porta
 - Documents Debian `systemd` service management and GRUB bootloader basics
 - Includes an OpenWeb Linux logo and browser-tab icon
 - Supports local file commands, command history, and JSON workspace backups
+- Provides multiple browser terminal tabs that share the same workspace files
 - Designed to be complete and self-contained
 - Boots from the Debian installer ISO bundled with the site; no separate ISO download is required
 - No third-party asset host is needed for the default kernel and emulator files
@@ -57,9 +58,11 @@ La página debe abrirse desde HTTPS (o desde `localhost` en desarrollo), no como
 
 Se incluyen las compilaciones de v86, SeaBIOS, VGA BIOS y la mini ISO oficial de Debian 12 para i386. Pulsa **Arrancar Debian** para iniciar el instalador en la pantalla completa. La máquina virtual usa 512 MiB de RAM y un disco temporal de 1 GiB, destinado a probar una instalación mínima. Necesita Internet; al completar la instalación, usa **Guardar** para descargar el estado de la máquina y **Abrir** para restaurarlo en otra sesión. El disco virtual se pierde al cerrar o recargar la página si no guardas un estado.
 
-El acceso a red usa el relay público `wss://relay.widgetry.org/` (el mismo endpoint que muestra un ejemplo oficial de v86). La conexión se comparte con un servicio externo; no introduzcas contraseñas ni información sensible en una sesión conectada.
+El acceso a red usa el relay público `wss://relay.widgetry.org/` (el mismo endpoint que muestra un ejemplo oficial de v86). La conexión se comparte con un servicio externo; no introduzcas contraseñas ni información sensible en una sesión conectada. Al enfocar el botón de arranque, la página prepara el emulador en segundo plano para acortar el tiempo de inicio; la ISO y los paquetes Debian aún dependen de la conexión.
 
-La mini ISO es un instalador de red, no un sistema live: `apt` está disponible después de instalar Debian. Para paquetes desde el instalador también se necesita que la red esté configurada.
+La mini ISO es un instalador de red, no un sistema live: `apt` está disponible después de instalar Debian. Para una instalación más rápida, selecciona un mirror Debian cercano y no instales un entorno de escritorio; puedes añadir paquetes después con apt. La descarga del sistema base sigue limitada por la conexión y el mirror escogido.
+
+Usa **+** y **×** en la barra de pestañas para abrir y cerrar terminales del espacio web. Cada pestaña conserva su historial por separado; los archivos y directorios se comparten entre ellas. La VM Debian sigue siendo una única máquina virtual compartida.
 
 Los orígenes, licencias y hashes SHA-256 de los binarios incluidos se documentan en [public/ASSETS.md](./public/ASSETS.md). La mini ISO también puede descargarse directamente desde [Debian](https://deb.debian.org/debian/dists/bookworm/main/installer-i386/current/images/netboot/mini.iso).
 
