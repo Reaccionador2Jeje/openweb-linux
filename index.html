@@ -250,14 +250,12 @@
         <div><h1 id="account-title">Conserva tu entorno</h1><p class="intro" id="account-description">Conecta tu cuenta para guardar la máquina virtual cifrada y recuperarla en otro dispositivo.</p></div>
         <button class="close-button" type="button" data-close aria-label="Cerrar"><svg viewBox="0 0 20 20" fill="none"><path d="m5 5 10 10M15 5 5 15" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button>
       </div>
-      <p class="notice" id="account-notice"><strong>Inicia sesión para guardar o restaurar tu entorno.</strong> El proyecto ya está conectado automáticamente; solo tú autorizas tu cuenta de Google o GitHub.</p>
+      <p class="notice" id="account-notice"><strong>Inicia sesión para guardar o restaurar tu entorno.</strong> El proyecto ya está conectado automáticamente; solo tú autorizas tu cuenta de GitHub.</p>
       <div class="auth-provider-list" aria-label="Proveedores de inicio de sesión">
-        <button class="auth-provider" type="button" data-provider="google" disabled><span class="provider-mark" aria-hidden="true">G</span>Continuar con Google</button>
         <button class="auth-provider" type="button" data-provider="github" disabled><span class="provider-mark" aria-hidden="true">GH</span>Continuar con GitHub</button>
       </div>
       <p class="auth-setup-note">Después de iniciar sesión, solo el usuario propietario podrá leer o sobrescribir su snapshot. Se cifra en tu navegador con una frase secreta antes de subirlo: guárdala aparte, porque no se puede recuperar.</p>
       <div class="auth-doc-links">
-        <a href="https://supabase.com/docs/guides/auth/social-login/auth-google" target="_blank" rel="noreferrer">Google ↗</a>
         <a href="https://supabase.com/docs/guides/auth/social-login/auth-github" target="_blank" rel="noreferrer">GitHub ↗</a>
       </div>
       <div class="cloud-actions" id="cloud-actions" hidden>
@@ -619,9 +617,9 @@
         updateAccountUI(data.session);
         setAccountMessage(data.session
           ? "Sesión iniciada: " + (data.session.user.email || data.session.user.id)
-          : "El servicio de cuentas está listo. " + (["google", "github"].some(provider => settings.external && settings.external[provider])
+          : "El servicio de cuentas está listo. " + (settings.external && settings.external.github
             ? "Elige un proveedor habilitado para iniciar sesión."
-            : "Activa Google o GitHub en Authentication → Providers de Supabase."));
+            : "Activa GitHub en Authentication → Providers de Supabase."));
         document.getElementById("account-notice").hidden = true;
         document.querySelectorAll("[data-provider]").forEach(button => {
           button.disabled = !settings.external || settings.external[button.dataset.provider] !== true;
