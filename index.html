@@ -107,6 +107,8 @@
     .setup-list li { position: relative; min-height: 42px; padding: 8px 0 8px 34px; border-bottom: 1px solid #292e27; color: #d4d9cd; font-size: 12px; line-height: 1.55; counter-increment: setup; }
     .setup-list li:before { position: absolute; left: 0; top: 8px; color: var(--lime); content: "0" counter(setup); font: 10px var(--mono); }
     .command-list { display: grid; gap: 8px; }
+    .guide-heading { margin: 19px 0 0; color: #dce1d5; font-size: 12px; }
+    .guide-note { margin: 6px 0 10px; color: var(--muted); font-size: 11px; line-height: 1.65; }
     .command-example { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 11px; border: 1px solid #30362e; border-radius: 6px; background: #10130f; }
     .command-example code { color: var(--lime); font: 11px var(--mono); }
     .command-example button { border: 0; background: transparent; color: #a9b19e; cursor: pointer; font-size: 10px; }
@@ -250,6 +252,19 @@
         <div class="command-example"><code>sudo apt upgrade</code><button type="button" data-command="sudo apt upgrade">Copiar</button></div>
         <div class="command-example"><code>sudo apt install &lt;paquete&gt;</code><button type="button" data-command="sudo apt install ">Copiar</button></div>
         <div class="command-example"><code>apt list --installed</code><button type="button" data-command="apt list --installed">Copiar</button></div>
+      </div>
+      <h2 class="guide-heading">Servicios de Debian (systemd)</h2>
+      <p class="guide-note">Ejecuta estos comandos dentro de la terminal Debian, no en el prompt del espacio web. Instala primero el paquete que proporciona el servicio.</p>
+      <div class="command-list">
+        <div class="command-example"><code>systemctl --type=service --state=running</code><button type="button" data-command="systemctl --type=service --state=running">Copiar</button></div>
+        <div class="command-example"><code>sudo systemctl status &lt;servicio&gt;</code><button type="button" data-command="sudo systemctl status ">Copiar</button></div>
+        <div class="command-example"><code>sudo systemctl enable --now &lt;servicio&gt;</code><button type="button" data-command="sudo systemctl enable --now ">Copiar</button></div>
+        <div class="command-example"><code>sudo systemctl disable --now &lt;servicio&gt;</code><button type="button" data-command="sudo systemctl disable --now ">Copiar</button></div>
+      </div>
+      <h2 class="guide-heading">Gestor de arranque GRUB</h2>
+      <p class="guide-note">El instalador Debian ofrece instalar GRUB en el disco virtual al finalizar. No instales otro gestor salvo que vayas a configurar varios sistemas operativos. Para regenerar su menú:</p>
+      <div class="command-list">
+        <div class="command-example"><code>sudo update-grub</code><button type="button" data-command="sudo update-grub">Copiar</button></div>
       </div>
       <div class="dialog-actions"><button class="secondary-button" type="button" data-close>Cerrar</button></div>
     </section>
@@ -1010,7 +1025,7 @@
           return;
         }
         navigator.clipboard.writeText(button.dataset.command)
-          .then(() => showToast("Comando copiado. Pégalo en la terminal Debian cuando la instalación termine."))
+          .then(() => showToast("Comando copiado. Pégalo en la terminal Debian cuando esté instalada."))
           .catch(error => showToast("No se pudo copiar el comando: " + error.message));
       }));
       restoreInput.addEventListener("change", async () => {

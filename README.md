@@ -13,6 +13,7 @@ OpenWeb Linux is a browser-based Linux installer focused on accessibility, porta
 - Boots the Debian 12 i386 network installer in the browser
 - Built on the v86 emulator
 - Provides apt after Debian is installed in the virtual machine
+- Documents Debian `systemd` service management and GRUB bootloader basics
 - Includes an OpenWeb Linux logo and browser-tab icon
 - Supports local file commands, command history, and JSON workspace backups
 - Designed to be complete and self-contained
@@ -29,6 +30,10 @@ This approach makes OpenWeb Linux more than a static browser demo: it boots the 
 ## Package Manager
 
 After Debian is installed, apt can install and manage software inside the emulated environment. The bundled mini ISO is an installer, not a live system, so apt is not available in a normal guest shell until setup is complete.
+
+## Services and bootloader
+
+The Debian installer can install GRUB to the virtual disk as part of setup; a second bootloader is not needed for a single Debian installation. After booting the installed system, manage services with `systemctl` (for example, `systemctl --type=service --state=running` or `sudo systemctl enable --now <service>`). Install a service's package first with apt. The website's apt guide includes copy buttons for common `systemd` commands and `sudo update-grub`. These commands must run in the Debian VM, not in the browser workspace prompt.
 
 ## Why it stands out
 
