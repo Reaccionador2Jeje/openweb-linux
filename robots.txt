@@ -1,4 +1,0 @@
-User-agent: *
-Allow: /
-
-Sitemap: https://reaccionador2jeje.github.io/openweb-linux/sitemap.xml
