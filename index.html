@@ -4,10 +4,10 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#10120f">
-  <meta name="description" content="Terminal web de OpenWeb Linux con espacio de trabajo local, importación y exportación de archivos y guía de setup Debian.">
+  <meta name="description" content="Alpine Linux ligero en una máquina virtual x86 del navegador, con teclado en pantalla y espacio de trabajo local.">
   <meta property="og:type" content="website">
-  <meta property="og:title" content="OpenWeb Linux — Terminal Debian en tu navegador">
-  <meta property="og:description" content="Prueba el instalador Debian en una máquina virtual x86 dentro del navegador.">
+  <meta property="og:title" content="OpenWeb Linux — Alpine en tu navegador">
+  <meta property="og:description" content="Inicia Alpine Linux ligero en una máquina virtual x86 dentro del navegador.">
   <meta property="og:image" content="https://reaccionador2jeje.github.io/openweb-linux/public/images/openweb-linux.svg">
   <meta name="twitter:card" content="summary">
   <link rel="icon" type="image/svg+xml" href="./public/images/openweb-linux.svg">
@@ -198,13 +198,13 @@
         <span class="session-status"><i class="status-dot" aria-hidden="true"></i>Espacio del navegador</span>
       </div>
       <nav class="toolbar" aria-label="Acciones de terminal">
-        <button class="tool-button" id="boot-button" type="button" title="Arrancar instalador Debian" aria-label="Arrancar instalador Debian">
-          <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="m7 4 9 6-9 6V4Z" fill="currentColor"/></svg><span class="button-label">Arrancar Debian</span>
+        <button class="tool-button" id="boot-button" type="button" title="Arrancar Alpine Linux" aria-label="Arrancar Alpine Linux">
+          <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="m7 4 9 6-9 6V4Z" fill="currentColor"/></svg><span class="button-label">Arrancar Alpine</span>
         </button>
-        <button class="tool-button" id="apt-button" type="button" title="Ayuda de apt" aria-label="Ayuda de apt">
-          <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4 5h12M4 10h12M4 15h12M7 3v4m6 1v4m-4 1v4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span class="button-label">apt</span>
+        <button class="tool-button" id="apk-button" type="button" title="Ayuda del gestor apk" aria-label="Ayuda de apk">
+          <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4 5h12M4 10h12M4 15h12M7 3v4m6 1v4m-4 1v4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span class="button-label">apk</span>
         </button>
-        <button class="tool-button" id="setup-button" type="button" title="Configurar Debian" aria-label="Configurar Debian">
+        <button class="tool-button" id="setup-button" type="button" title="Configurar Alpine Linux" aria-label="Configurar Alpine Linux">
           <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M10 2.5v2m0 11v2m7.5-7.5h-2m-11 0h-2m12.8-5.3-1.4 1.4M6.1 13.9l-1.4 1.4m10.6 0-1.4-1.4M6.1 6.1 4.7 4.7" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><circle cx="10" cy="10" r="3" stroke="currentColor" stroke-width="1.4"/></svg><span class="button-label">Setup</span>
         </button>
         <button class="tool-button" id="restore-button" type="button" title="Opciones para restaurar" aria-label="Opciones para restaurar">
@@ -234,14 +234,14 @@
           <div class="terminal-content terminal-session" id="terminal-content" role="tabpanel" aria-live="polite" aria-label="Salida de Terminal 1"></div>
         </div>
         <div class="vm-container" id="vm-container">
-          <div id="vm-screen" tabindex="0" aria-label="Pantalla de la máquina virtual Debian">
+          <div id="vm-screen" tabindex="0" aria-label="Pantalla de la máquina virtual Alpine Linux">
             <div style="white-space:pre;font:14px monospace;line-height:14px"></div>
             <canvas style="display:none"></canvas>
           </div>
         </div>
       </div>
       <div class="bottom-bar">
-        <span class="bottom-hint">help · save · apt · terminales comparten archivos</span>
+        <span class="bottom-hint">help · save · apk · terminales comparten archivos</span>
         <button class="keyboard-toggle" id="keyboard-toggle" type="button" aria-expanded="false" aria-controls="mobile-keyboard">⌨ Teclado</button>
         <span id="storage-status">Guardado local activado</span>
       </div>
@@ -281,46 +281,47 @@
   <div class="modal-backdrop" id="setup-modal" role="presentation">
     <section class="dialog" role="dialog" aria-modal="true" aria-labelledby="setup-title">
       <div class="dialog-header">
-        <div><h1 id="setup-title">Setup de Debian en la web</h1><p class="intro">Para tener una terminal Debian real y ejecutar apt, la página necesita arrancar una máquina virtual x86 dentro del navegador.</p></div>
+        <div><h1 id="setup-title">Alpine Linux en la web</h1><p class="intro">OpenWeb arranca Alpine Linux, una distribución ligera para sistemas virtualizados, dentro de una máquina x86.</p></div>
         <button class="close-button" type="button" data-close aria-label="Cerrar"><svg viewBox="0 0 20 20" fill="none"><path d="m5 5 10 10M15 5 5 15" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button>
       </div>
-      <p class="notice"><strong>Instalador de red, no sistema live:</strong> al arrancar se ejecuta el instalador Debian 12 i386 con 512 MiB de RAM y un disco virtual temporal de 1 GiB para pruebas de instalación mínima. Debes completar la instalación antes de tener un Debian normal con apt; el disco se pierde al cerrar o recargar salvo que guardes el estado.</p>
-      <p class="guide-note">Para acelerar la instalación, selecciona un mirror Debian cercano y no marques entorno de escritorio. El primer arranque descarga la mini ISO (unos 49 MiB); la descarga de paquetes depende de tu conexión y del mirror. Al enfocar o señalar Arrancar Debian se preparan en segundo plano los archivos del emulador para reducir la espera inicial.</p>
+      <p class="notice"><strong>Alpine se inicia como un sistema live:</strong> la imagen Alpine virt x86 incluye un sistema mínimo y usa 256 MiB de RAM. Inicia como <code>root</code>; ejecuta <code>setup-alpine</code> para configurar la red y, si quieres conservar una instalación en el disco virtual de 512 MiB, sigue las indicaciones para instalar en <code>/dev/sda</code>. Guarda el estado de v86 antes de cerrar o recargar.</p>
+      <p class="guide-note">La imagen virt ocupa unos 49 MiB. Incluye controladores pensados para máquinas virtuales y usa virtio en v86. La descarga de paquetes al configurar Alpine depende de tu conexión y del mirror seleccionado.</p>
       <ol class="setup-list">
-        <li>Pulsa <strong>Arrancar Debian</strong>, haz clic dentro de la pantalla virtual para enviarle el teclado y sigue el instalador; selecciona la unidad virtual para instalar.</li>
-        <li>Para descargar paquetes, el instalador usa un relay público de red y los repositorios Debian. No uses contraseñas ni datos sensibles durante esa conexión.</li>
-        <li>Al terminar, el sistema instalado y tus cambios siguen en memoria hasta que cierres o recargues la página.</li>
+        <li>Pulsa <strong>Arrancar Alpine</strong>. En la consola de inicio, escribe <code>root</code> para entrar. Ya puedes usar el sistema live; ejecuta <code>setup-alpine</code> si quieres instalarlo al disco.</li>
+        <li>En la configuración, elige <code>eth0</code> y una mirror Alpine cercana. La red pasa por un relay público; no uses contraseñas ni datos sensibles durante esa conexión.</li>
+        <li>La sesión live funciona en memoria. El instalador configura Alpine en el disco; ambas cosas se pierden al cerrar o recargar si no guardas el estado de v86.</li>
         <li>Usa <strong>Guardar</strong> para exportar el estado completo de v86 (.bin) y <strong>Abrir</strong> para restaurarlo. El archivo puede ser muy grande.</li>
-        <li>En móvil, pulsa <strong>⌨ Teclado</strong> para mostrar teclas especiales y escribir dentro de Debian.</li>
+        <li>En móvil, pulsa <strong>⌨ Teclado</strong> para escribir y usar teclas especiales en Alpine.</li>
       </ol>
       <div class="dialog-actions"><button class="secondary-button" type="button" data-close>Entendido</button></div>
     </section>
   </div>
 
-  <div class="modal-backdrop" id="apt-modal" role="presentation">
-    <section class="dialog" role="dialog" aria-modal="true" aria-labelledby="apt-title">
+  <div class="modal-backdrop" id="apk-modal" role="presentation">
+    <section class="dialog" role="dialog" aria-modal="true" aria-labelledby="apk-title">
       <div class="dialog-header">
-        <div><h1 id="apt-title">apt · paquetes Debian</h1><p class="intro">Cuando termine la instalación y estés en la terminal Debian, puedes usar estos comandos. La ISO incluida abre el instalador de red, no un escritorio live.</p></div>
+        <div><h1 id="apk-title">apk · paquetes Alpine</h1><p class="intro">Escribe estos comandos en la consola Alpine como root. Alpine usa apk en lugar de apt.</p></div>
         <button class="close-button" type="button" data-close aria-label="Cerrar"><svg viewBox="0 0 20 20" fill="none"><path d="m5 5 10 10M15 5 5 15" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button>
       </div>
       <div class="command-list">
-        <div class="command-example"><code>sudo apt update</code><button type="button" data-command="sudo apt update">Copiar</button></div>
-        <div class="command-example"><code>sudo apt upgrade</code><button type="button" data-command="sudo apt upgrade">Copiar</button></div>
-        <div class="command-example"><code>sudo apt install &lt;paquete&gt;</code><button type="button" data-command="sudo apt install ">Copiar</button></div>
-        <div class="command-example"><code>apt list --installed</code><button type="button" data-command="apt list --installed">Copiar</button></div>
+        <div class="command-example"><code>apk update</code><button type="button" data-command="apk update">Copiar</button></div>
+        <div class="command-example"><code>apk upgrade</code><button type="button" data-command="apk upgrade">Copiar</button></div>
+        <div class="command-example"><code>apk add &lt;paquete&gt;</code><button type="button" data-command="apk add ">Copiar</button></div>
+        <div class="command-example"><code>apk info</code><button type="button" data-command="apk info">Copiar</button></div>
+        <div class="command-example"><code>apk search &lt;paquete&gt;</code><button type="button" data-command="apk search ">Copiar</button></div>
       </div>
-      <h2 class="guide-heading">Servicios de Debian (systemd)</h2>
-      <p class="guide-note">Ejecuta estos comandos dentro de la terminal Debian, no en el prompt del espacio web. Instala primero el paquete que proporciona el servicio.</p>
+      <h2 class="guide-heading">Servicios de Alpine (OpenRC)</h2>
+      <p class="guide-note">Ejecuta los comandos en la consola Alpine como root. Alpine usa OpenRC, no systemd.</p>
       <div class="command-list">
-        <div class="command-example"><code>systemctl --type=service --state=running</code><button type="button" data-command="systemctl --type=service --state=running">Copiar</button></div>
-        <div class="command-example"><code>sudo systemctl status &lt;servicio&gt;</code><button type="button" data-command="sudo systemctl status ">Copiar</button></div>
-        <div class="command-example"><code>sudo systemctl enable --now &lt;servicio&gt;</code><button type="button" data-command="sudo systemctl enable --now ">Copiar</button></div>
-        <div class="command-example"><code>sudo systemctl disable --now &lt;servicio&gt;</code><button type="button" data-command="sudo systemctl disable --now ">Copiar</button></div>
+        <div class="command-example"><code>rc-status</code><button type="button" data-command="rc-status">Copiar</button></div>
+        <div class="command-example"><code>rc-service &lt;servicio&gt; status</code><button type="button" data-command="rc-service &lt;servicio&gt; status">Copiar</button></div>
+        <div class="command-example"><code>rc-update add &lt;servicio&gt; default</code><button type="button" data-command="rc-update add &lt;servicio&gt; default">Copiar</button></div>
+        <div class="command-example"><code>rc-update del &lt;servicio&gt; default</code><button type="button" data-command="rc-update del &lt;servicio&gt; default">Copiar</button></div>
       </div>
-      <h2 class="guide-heading">Gestor de arranque GRUB</h2>
-      <p class="guide-note">El instalador Debian ofrece instalar GRUB en el disco virtual al finalizar. No instales otro gestor salvo que vayas a configurar varios sistemas operativos. Para regenerar su menú:</p>
+      <h2 class="guide-heading">Instalación al disco</h2>
+      <p class="guide-note">El asistente <code>setup-alpine</code> configura la instalación y el arranque. Para instalar manualmente el sistema en el disco:</p>
       <div class="command-list">
-        <div class="command-example"><code>sudo update-grub</code><button type="button" data-command="sudo update-grub">Copiar</button></div>
+        <div class="command-example"><code>setup-disk -m sys /dev/sda</code><button type="button" data-command="setup-disk -m sys /dev/sda">Copiar</button></div>
       </div>
       <div class="dialog-actions"><button class="secondary-button" type="button" data-close>Cerrar</button></div>
     </section>
@@ -364,7 +365,7 @@
       const STORAGE_KEY = "openweb-linux-workspace-v1";
       const VM_STATE_DATABASE = "openweb-linux-local-vm";
       const VM_STATE_STORE = "state";
-      const VM_STATE_KEY = "latest";
+      const VM_STATE_KEY = "alpine-latest-v1";
       let output = document.getElementById("terminal-content");
       const scroll = document.getElementById("terminal-scroll");
       const terminalTabs = document.getElementById("terminal-tabs");
@@ -665,7 +666,7 @@
           case "help":
             appendLine("Comandos disponibles en el espacio web (no ejecutan comandos del sistema):", "muted");
             appendLine("Archivos: ls, cd, pwd, tree, find, cat, head, tail, grep, wc, touch, write, mkdir, rmdir, cp, mv, rm");
-            appendLine("Utilidades: echo, date, whoami, uname, history, clear, help, save, download, apt");
+            appendLine("Utilidades: echo, date, whoami, uname, history, clear, help, save, download, apk");
             appendLine("Los archivos se comparten entre pestañas y se guardan en este navegador.", "muted");
             break;
           case "echo":
@@ -857,15 +858,11 @@
             appendLine("Descarga iniciada: " + path, "green");
             break;
           }
-          case "apt":
-            appendLine("apt no se ejecutó: esta página aún no tiene una VM Debian conectada.", "error");
-            appendLine("Abre Setup para ver qué se necesita; apt funcionará dentro del Debian arrancado.", "muted");
+          case "apk":
+            appendLine("apk no se ejecuta en el espacio web; abre la VM Alpine y ejecuta apk en su consola.", "error");
             break;
           case "sudo":
-            if (args[0] === "apt") {
-              appendLine("apt no se ejecutó: esta página aún no tiene una VM Debian conectada.", "error");
-              appendLine("Abre Setup para ver los requisitos de arranque de Debian.", "muted");
-            } else appendLine("sudo solo estará disponible dentro de la VM Debian.", "error");
+            appendLine("Este espacio web no ejecuta comandos del sistema. En Alpine, inicia sesión como root o configura un usuario con doas.", "error");
             break;
           default:
             appendLine(command + ": comando no disponible en el espacio web. Escribe help.", "error");
@@ -975,7 +972,7 @@
         if (vmScreenVisible && vmRunning && emulator) {
           const keyCodes = { backspace: 8, tab: 9, enter: 13, escape: 27, left: 37, up: 38, right: 39, down: 40 };
           const operation = action ? emulator.keyboard_send_keys([keyCodes[action]]) : emulator.keyboard_send_text(value);
-          operation.catch(error => showToast("No se pudo enviar la tecla a Debian: " + error.message));
+          operation.catch(error => showToast("No se pudo enviar la tecla a Alpine: " + error.message));
           return;
         }
         if (action) pressWorkspaceKey(action);
@@ -1115,10 +1112,10 @@
         }
         vmRunning = true;
         showVmScreen(true);
-        document.getElementById("boot-button").querySelector(".button-label").textContent = "Pausar Debian";
+        document.getElementById("boot-button").querySelector(".button-label").textContent = "Pausar Alpine";
         document.getElementById("boot-button").title = "Pausar la máquina virtual";
-        document.getElementById("storage-status").textContent = "Instalador Debian iniciado · red mediante relay público";
-        document.querySelector(".session-status").lastChild.textContent = "Instalador Debian";
+        document.getElementById("storage-status").textContent = "Alpine iniciado · red mediante relay público";
+        document.querySelector(".session-status").lastChild.textContent = "Alpine Linux";
       }
 
       async function restoreVMState(state) {
@@ -1132,7 +1129,7 @@
         emulator.run();
         vmRunning = true;
         showVmScreen(true);
-        document.getElementById("boot-button").querySelector(".button-label").textContent = "Pausar Debian";
+        document.getElementById("boot-button").querySelector(".button-label").textContent = "Pausar Alpine";
         document.getElementById("boot-button").title = "Pausar la máquina virtual";
         storageStatus.textContent = "Máquina virtual restaurada";
       }
@@ -1164,7 +1161,7 @@
       }
 
       async function saveLocalVM() {
-        if (!emulator) throw new Error("Arranca Debian antes de guardar el estado de la máquina virtual.");
+        if (!emulator) throw new Error("Arranca Alpine antes de guardar el estado de la máquina virtual.");
         storageStatus.textContent = "Creando copia local de v86…";
         const state = await emulator.save_state();
         await saveLocalVMState(state);
@@ -1199,28 +1196,28 @@
             emulator.stop();
             vmRunning = false;
             showVmScreen(false);
-            button.querySelector(".button-label").textContent = "Reanudar Debian";
+            button.querySelector(".button-label").textContent = "Reanudar Alpine";
             button.title = "Reanudar la máquina virtual";
-            storageStatus.textContent = "Debian pausado en memoria";
+            storageStatus.textContent = "Alpine pausado en memoria";
           } else {
             emulator.run();
             vmRunning = true;
             showVmScreen(true);
-            button.querySelector(".button-label").textContent = "Pausar Debian";
+            button.querySelector(".button-label").textContent = "Pausar Alpine";
             button.title = "Pausar la máquina virtual";
-            storageStatus.textContent = "Instalador Debian iniciado · red mediante relay público";
+            storageStatus.textContent = "Alpine iniciado · red mediante relay público";
           }
           return;
         }
         button.disabled = true;
-        storageStatus.textContent = "Iniciando v86 y cargando la ISO de Debian…";
+        storageStatus.textContent = "Iniciando v86 y cargando Alpine Linux…";
         try {
           await bootVM();
         } catch (error) {
           if (emulator) emulator.stop();
           emulator = null;
           vmRunning = false;
-          storageStatus.textContent = "No se pudo iniciar Debian";
+          storageStatus.textContent = "No se pudo iniciar Alpine";
           showToast("No se pudo iniciar v86: " + error.message);
         } finally {
           button.disabled = false;
@@ -1276,7 +1273,7 @@
         restoreInput.click();
       });
       document.getElementById("setup-button").addEventListener("click", () => openModal("setup-modal"));
-      document.getElementById("apt-button").addEventListener("click", () => openModal("apt-modal"));
+      document.getElementById("apk-button").addEventListener("click", () => openModal("apk-modal"));
       document.getElementById("fullscreen-button").addEventListener("click", async () => {
         try {
           if (!document.fullscreenElement) await document.documentElement.requestFullscreen();
@@ -1304,11 +1301,11 @@
       document.querySelectorAll("[data-command]").forEach(button => button.addEventListener("click", () => {
         closeModals();
         if (!navigator.clipboard || !window.isSecureContext) {
-          showToast("Abre este sitio por HTTPS para copiar comandos apt.");
+          showToast("Abre este sitio por HTTPS para copiar comandos apk.");
           return;
         }
         navigator.clipboard.writeText(button.dataset.command)
-          .then(() => showToast("Comando copiado. Pégalo en la terminal Debian cuando esté instalada."))
+          .then(() => showToast("Comando copiado. Pégalo en la consola Alpine de la máquina virtual."))
           .catch(error => showToast("No se pudo copiar el comando: " + error.message));
       }));
       restoreInput.addEventListener("change", async () => {
@@ -1388,7 +1385,7 @@
       updateLocalVMRestoreButton().catch(error => {
         appendLine("No se pudo consultar el almacenamiento local de VM: " + error.message, "error");
       });
-      appendLine("Pulsa Arrancar Debian para iniciar el instalador; escribe help para comandos del espacio web.", "muted");
+      appendLine("Pulsa Arrancar Alpine para iniciar el sistema; escribe help para comandos del espacio web.", "muted");
       focusPrompt();
     })();
   </script>

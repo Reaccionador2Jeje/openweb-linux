@@ -1,7 +1,7 @@
 export function createV86Config(screenContainer) {
   return {
     wasm_path: "./public/vendor/v86/v86.wasm",
-    memory_size: 512 * 1024 * 1024,
+    memory_size: 256 * 1024 * 1024,
     vga_memory_size: 8 * 1024 * 1024,
     screen_container: screenContainer,
     bios: {
@@ -11,11 +11,14 @@ export function createV86Config(screenContainer) {
       url: "./public/vendor/v86/bios/vgabios.bin",
     },
     cdrom: {
-      url: "./public/images/debian-mini.iso",
+      url: "./public/images/alpine-virt-3.24.2-x86.iso",
+    },
+    net_device: {
+      type: "virtio",
     },
     boot_order: 0x213,
     hda: {
-      buffer: new ArrayBuffer(1024 * 1024 * 1024),
+      buffer: new ArrayBuffer(512 * 1024 * 1024),
     },
     network_relay_url: "wss://relay.widgetry.org/",
     autostart: true,
