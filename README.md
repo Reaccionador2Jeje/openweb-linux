@@ -13,6 +13,8 @@ OpenWeb Linux is a browser-based Linux installer focused on accessibility, porta
 - Boots the Debian 12 i386 network installer in the browser
 - Built on the v86 emulator
 - Provides apt after Debian is installed in the virtual machine
+- Includes an OpenWeb Linux logo and browser-tab icon
+- Supports local file commands, command history, and JSON workspace backups
 - Designed to be complete and self-contained
 - Boots from the Debian installer ISO bundled with the site; no separate ISO download is required
 - No third-party asset host is needed for the default kernel and emulator files
@@ -22,7 +24,7 @@ OpenWeb Linux is a browser-based Linux installer focused on accessibility, porta
 
 OpenWeb Linux serves the default kernel and emulator assets directly from the project itself. The browser loads the Linux environment through the v86 emulator, which emulates an x86 machine and boots the operating system inside the page.
 
-This approach makes OpenWeb Linux more than a static browser demo: it boots the real Debian installer in the web page. Completing the Debian installation is necessary before using the guest OS or apt.
+This approach makes OpenWeb Linux more than a static browser demo: it boots the real Debian installer in the web page. Completing the Debian installation is necessary before using the guest OS or apt. Before booting, the browser terminal also provides a local workspace (`help`, `write`, `touch`, `download`, `save`); it is not a shell and does not execute arbitrary operating-system commands.
 
 ## Package Manager
 

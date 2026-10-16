@@ -1,5 +1,6 @@
 # Bundled assets
 
+- `images/openweb-linux.svg` is the original OpenWeb Linux project logo and browser-tab icon.
 - `vendor/v86/libv86.js` and `vendor/v86/v86.wasm` are the official v86 `latest` release from https://github.com/copy/v86/releases/tag/latest (BSD-2-Clause; see `vendor/v86/LICENSE`).
 - `vendor/v86/bios/seabios.bin` and `vendor/v86/bios/vgabios.bin` are from v86 commit `94faf3d6b19ecabc53a4010aaa24252fa6a162e2`; the BIOS files carry their upstream license in `vendor/v86/bios/COPYING.LESSER`.
 - `images/debian-mini.iso` is Debian 12 (Bookworm) i386's official network installer, downloaded from https://deb.debian.org/debian/dists/bookworm/main/installer-i386/current/images/netboot/mini.iso. It is a 51,380,224-byte installer, not a live desktop image.

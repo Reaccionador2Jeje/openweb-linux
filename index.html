@@ -5,6 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#10120f">
   <meta name="description" content="Terminal web de OpenWeb Linux con espacio de trabajo local, importación y exportación de archivos y guía de setup Debian.">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="OpenWeb Linux — Terminal Debian en tu navegador">
+  <meta property="og:description" content="Prueba el instalador Debian en una máquina virtual x86 dentro del navegador.">
+  <meta property="og:image" content="https://reaccionador2jeje.github.io/openweb-linux/public/images/openweb-linux.svg">
+  <meta name="twitter:card" content="summary">
+  <link rel="icon" type="image/svg+xml" href="./public/images/openweb-linux.svg">
   <title>OpenWeb Linux — Terminal</title>
   <style>
     :root {
@@ -23,6 +29,7 @@
     body { overflow: hidden; background: var(--bg); color: var(--text); font: 13px var(--sans); }
     button, input { font: inherit; }
     button { color: inherit; }
+    :focus-visible { outline: 2px solid var(--lime); outline-offset: 3px; }
     .app { display: flex; width: 100%; height: 100vh; height: 100dvh; flex-direction: column; }
     .topbar {
       z-index: 2; display: flex; height: 54px; flex: 0 0 54px; align-items: center;
@@ -30,7 +37,7 @@
       border-bottom: 1px solid var(--line); background: #151813;
     }
     .brand { display: flex; min-width: 0; align-items: center; gap: 10px; font-size: 13px; font-weight: 650; letter-spacing: -.025em; }
-    .brand-mark { display: grid; width: 27px; height: 27px; place-items: center; border: 1px solid #435333; border-radius: 7px; color: var(--lime); font: 700 12px var(--mono); }
+    .brand-mark { display: block; width: 29px; height: 29px; flex: 0 0 29px; }
     .session-status { display: flex; align-items: center; gap: 8px; margin-left: 12px; color: var(--muted); font-size: 11px; font-weight: 400; letter-spacing: 0; }
     .status-dot { width: 7px; height: 7px; border-radius: 50%; background: #e4b75b; box-shadow: 0 0 9px #e4b75b55; }
     .toolbar { display: flex; align-items: center; gap: 7px; }
@@ -144,7 +151,7 @@
     @media (max-width: 620px) {
       .topbar { height: 50px; flex-basis: 50px; padding: 0 10px; gap: 5px; }
       .brand { gap: 7px; font-size: 11px; }
-      .brand-mark { width: 24px; height: 24px; font-size: 10px; }
+      .brand-mark { width: 25px; height: 25px; flex-basis: 25px; }
       .session-status { display: none; }
       .session-status { gap: 5px; margin-left: 2px; font-size: 9px; }
       .toolbar { gap: 4px; }
@@ -155,13 +162,16 @@
       .bottom-bar { padding: 0 9px; font-size: 9px; }
       .dialog { padding: 20px; }
     }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; }
+    }
   </style>
 </head>
 <body>
   <div class="app">
     <header class="topbar">
       <div class="brand">
-        <span class="brand-mark" aria-hidden="true">ow</span>
+        <img class="brand-mark" src="./public/images/openweb-linux.svg" alt="" aria-hidden="true" width="29" height="29">
         <span>OpenWeb Linux</span>
         <span class="session-status"><i class="status-dot" aria-hidden="true"></i>Espacio del navegador</span>
       </div>
@@ -407,6 +417,8 @@
             appendLine("  rm <archivo>         borrar un archivo");
             appendLine("  clear                limpiar la pantalla");
             appendLine("  save                 descargar un respaldo JSON");
+            appendLine("  download <archivo>   descargar un archivo del espacio");
+            appendLine("  touch <archivo>      crear un archivo vacío");
             appendLine("  apt ...              ver requisitos para usar apt en Debian");
             appendLine("Usa Guardar/Abrir para exportar o restaurar el espacio.", "muted");
             break;
@@ -465,6 +477,30 @@
             downloadWorkspace();
             appendLine("Respaldo JSON descargado.", "green");
             break;
+          case "touch": {
+            if (!argument) { appendLine("uso: touch <archivo>", "error"); break; }
+            const path = normalizePath(args[0]).slice(1);
+            if (!path) { appendLine("touch: indica el nombre de un archivo.", "error"); break; }
+            if (!Object.prototype.hasOwnProperty.call(files, path)) files[path] = "";
+            appendLine("Archivo listo: " + path, "green");
+            break;
+          }
+          case "download": {
+            if (!argument) { appendLine("uso: download <archivo>", "error"); break; }
+            const path = normalizePath(args[0]).slice(1);
+            if (!Object.prototype.hasOwnProperty.call(files, path)) {
+              appendLine("download: no existe el archivo: /" + path, "error");
+              break;
+            }
+            const url = URL.createObjectURL(new Blob([files[path]], { type: "text/plain;charset=utf-8" }));
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = path.split("/").pop();
+            link.click();
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+            appendLine("Descarga iniciada: " + path, "green");
+            break;
+          }
           case "apt":
             appendLine("apt no se ejecutó: esta página aún no tiene una VM Debian conectada.", "error");
             appendLine("Abre Setup para ver qué se necesita; apt funcionará dentro del Debian arrancado.", "muted");
@@ -536,10 +572,20 @@
       }
 
       function openModal(id) {
+        if (!document.querySelector(".modal-backdrop.open")) modalReturnFocus = document.activeElement;
         document.querySelectorAll(".modal-backdrop.open").forEach(modal => modal.classList.remove("open"));
         const modal = document.getElementById(id);
         modal.classList.add("open");
         modal.querySelector("[data-close]").focus();
+      }
+
+      let modalReturnFocus = null;
+
+      function closeModals() {
+        const hadOpenModal = Boolean(document.querySelector(".modal-backdrop.open"));
+        document.querySelectorAll(".modal-backdrop.open").forEach(modal => modal.classList.remove("open"));
+        if (hadOpenModal && modalReturnFocus instanceof HTMLElement && modalReturnFocus.isConnected) modalReturnFocus.focus();
+        modalReturnFocus = null;
       }
 
       function setAccountMessage(message) {
@@ -922,8 +968,7 @@
         try {
           if (cloudAction === "save") await saveCloudSnapshot(passphrase);
           else await restoreCloudSnapshot(passphrase);
-          document.getElementById("snapshot-modal").classList.remove("open");
-          document.getElementById("account-modal").classList.remove("open");
+          closeModals();
         } catch (error) {
           showToast("No se completó la operación en la nube: " + error.message);
           setAccountMessage("Error del respaldo: " + error.message);
@@ -942,22 +987,24 @@
           showToast("El navegador no permitió cambiar a pantalla completa.");
         }
       });
-      document.querySelectorAll("[data-close]").forEach(button => button.addEventListener("click", () => button.closest(".modal-backdrop").classList.remove("open")));
+      document.querySelectorAll("[data-close]").forEach(button => button.addEventListener("click", closeModals));
       document.querySelectorAll(".modal-backdrop").forEach(backdrop => backdrop.addEventListener("click", event => {
-        if (event.target === backdrop) backdrop.classList.remove("open");
+        if (event.target === backdrop) closeModals();
       }));
       document.addEventListener("keydown", event => {
-        if (event.key === "Escape") document.querySelectorAll(".modal-backdrop.open").forEach(modal => modal.classList.remove("open"));
+        if (event.key === "Escape" && document.querySelector(".modal-backdrop.open")) closeModals();
         if (event.key === "Tab" && document.querySelector(".modal-backdrop.open")) {
           const modal = document.querySelector(".modal-backdrop.open");
-          const controls = [...modal.querySelectorAll("button")];
+          const controls = [...modal.querySelectorAll('a[href], button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])')]
+            .filter(control => !control.hidden && control.getClientRects().length);
+          if (!controls.length) { event.preventDefault(); return; }
           const first = controls[0], last = controls[controls.length - 1];
           if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
           else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
         }
       });
       document.querySelectorAll("[data-command]").forEach(button => button.addEventListener("click", () => {
-        document.querySelectorAll(".modal-backdrop.open").forEach(modal => modal.classList.remove("open"));
+        closeModals();
         if (!navigator.clipboard || !window.isSecureContext) {
           showToast("Abre este sitio por HTTPS para copiar comandos apt.");
           return;

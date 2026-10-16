@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title">
+  <title id="title">OpenWeb Linux</title>
+  <rect width="64" height="64" rx="16" fill="#10120f"/>
+  <rect x="5" y="5" width="54" height="54" rx="13" fill="#171a16" stroke="#435333" stroke-width="2"/>
+  <path d="m20 23 10 9-10 9" fill="none" stroke="#c6f36b" stroke-linecap="round" stroke-linejoin="round" stroke-width="5"/>
+  <path d="M34 42h12" fill="none" stroke="#8fc9e6" stroke-linecap="round" stroke-width="5"/>
+</svg>
