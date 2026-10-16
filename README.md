@@ -65,6 +65,6 @@ Los orígenes, licencias y hashes SHA-256 de los binarios incluidos se documenta
 
 ## Guardar y restaurar
 
-No se requiere iniciar sesión ni conectar servicios externos. El espacio de trabajo del navegador se guarda automáticamente en el almacenamiento local de ese navegador; **Guardar** descarga una copia JSON y **Abrir** la importa. Si la VM Debian está arrancada, **Guardar** descarga su estado completo de v86 como archivo `.bin`, y **Abrir** permite restaurarlo. Conserva esos archivos en un lugar seguro: el estado de la VM puede ocupar mucho espacio y no se sincroniza entre navegadores o dispositivos.
+No se requiere iniciar sesión ni conectar servicios externos. El espacio de trabajo del navegador se guarda automáticamente en ese navegador. Pulsa **Guardar** para elegir entre guardar el estado de la VM en el almacenamiento local del navegador, descargar el estado de v86 como archivo `.bin` o descargar el espacio de trabajo como `.json`. **Abrir** permite restaurar la copia local o importar un archivo. Las copias locales no se sincronizan entre navegadores o dispositivos; para mover una VM, descarga y transfiere el archivo `.bin`. Los estados pueden ocupar mucho espacio, y el navegador puede limitar o borrar el almacenamiento local.
 
-La versión del sitio ya no accede a Supabase ni ofrece inicio de sesión. Los snapshots que se hubieran subido anteriormente a tu proyecto Supabase no se borran al retirar la integración; elimínalos desde Supabase Storage si ya no los necesitas.
+El sitio ya no se conecta a Supabase ni ofrece cuentas. Si habías guardado snapshots allí anteriormente, siguen en tu proyecto y debes borrarlos desde Supabase Storage si ya no los necesitas.
