@@ -49,7 +49,6 @@
     .tool-button:hover { border-color: #616d54; color: var(--text); }
     .tool-button svg { width: 14px; height: 14px; }
     .tool-button .button-label { white-space: nowrap; }
-    .tool-button.account-button { border-color: #405033; color: var(--lime); }
     .terminal-window { display: flex; min-height: 0; flex: 1; flex-direction: column; background: #0d0f0c; }
     .terminal-bar {
       display: flex; height: 38px; flex: 0 0 38px; align-items: center; justify-content: space-between;
@@ -118,31 +117,6 @@
     .primary-button:hover { background: #d5ff85; }
     .secondary-button { min-height: 35px; padding: 0 13px; border: 1px solid #3a4135; border-radius: 6px; background: #1d211b; color: #e1e5db; cursor: pointer; font-size: 11px; }
     .secondary-button:hover { border-color: #67745b; }
-    .auth-provider-list { display: grid; gap: 9px; }
-    .auth-provider {
-      display: flex; min-height: 43px; align-items: center; gap: 11px; padding: 0 13px;
-      border: 1px solid #353b31; border-radius: 6px; background: #1c201b; color: #c8cec0; font-size: 12px;
-    }
-    .auth-provider:disabled, .cloud-button:disabled { cursor: not-allowed; opacity: .45; }
-    .auth-provider:not(:disabled), .cloud-button:not(:disabled) { cursor: pointer; }
-    .auth-provider:not(:disabled):hover, .cloud-button:not(:disabled):hover { border-color: #67745b; color: var(--text); }
-    .provider-mark { display: grid; width: 20px; place-items: center; color: #f0f2e9; font: 700 11px var(--mono); }
-    .auth-setup-note { margin: 14px 0 0; color: var(--muted); font-size: 11px; line-height: 1.7; }
-    .auth-doc-links { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 10px; font-size: 10px; }
-    .auth-doc-links a { color: var(--lime); text-decoration: underline; text-underline-offset: 3px; }
-    .snapshot-form label { display: grid; gap: 5px; color: #abb3a2; font-size: 10px; }
-    .snapshot-form input {
-      width: 100%; min-height: 36px; padding: 8px 10px; border: 1px solid #384033; border-radius: 5px;
-      outline: none; background: #10130f; color: var(--text); font: 11px var(--mono);
-    }
-    .snapshot-form input:focus { border-color: var(--lime); }
-    .cloud-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 16px; }
-    .auth-provider-list[hidden], .auth-setup-note[hidden], .auth-doc-links[hidden], .cloud-actions[hidden], #signout-button[hidden], #account-notice[hidden] { display: none; }
-    .cloud-button { min-height: 36px; border: 1px solid #3a4135; border-radius: 6px; background: #1d211b; color: #e1e5db; font-size: 11px; }
-    .snapshot-form { display: grid; gap: 13px; }
-    .snapshot-form .helper { margin: 0; color: var(--muted); font-size: 10px; line-height: 1.6; }
-    .account-actions { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 14px; }
-    .account-message { min-height: 17px; margin: 8px 0 0; color: var(--muted); font-size: 10px; line-height: 1.6; }
     .toast {
       position: fixed; z-index: 8; right: 18px; bottom: 46px; max-width: min(400px, calc(100vw - 36px));
       padding: 11px 14px; transform: translateY(10px); border: 1px solid #3d4932; border-radius: 7px;
@@ -178,9 +152,6 @@
         <span class="session-status"><i class="status-dot" aria-hidden="true"></i>Espacio del navegador</span>
       </div>
       <nav class="toolbar" aria-label="Acciones de terminal">
-        <button class="tool-button account-button" id="account-button" type="button" title="Cuenta y sincronización" aria-label="Cuenta y sincronización">
-          <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><circle cx="10" cy="6.5" r="3" stroke="currentColor" stroke-width="1.4"/><path d="M4 17c.5-3 2.5-4.5 6-4.5s5.5 1.5 6 4.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg><span class="button-label">Sesión local</span>
-        </button>
         <button class="tool-button" id="boot-button" type="button" title="Arrancar instalador Debian" aria-label="Arrancar instalador Debian">
           <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="m7 4 9 6-9 6V4Z" fill="currentColor"/></svg><span class="button-label">Arrancar Debian</span>
         </button>
@@ -269,49 +240,6 @@
       <div class="dialog-actions"><button class="secondary-button" type="button" data-close>Cerrar</button></div>
     </section>
   </div>
-  <div class="modal-backdrop" id="account-modal" role="presentation">
-    <section class="dialog" role="dialog" aria-modal="true" aria-labelledby="account-title">
-      <div class="dialog-header">
-        <div><h1 id="account-title">Conserva tu entorno</h1><p class="intro" id="account-description">Conecta tu cuenta para guardar la máquina virtual cifrada y recuperarla en otro dispositivo.</p></div>
-        <button class="close-button" type="button" data-close aria-label="Cerrar"><svg viewBox="0 0 20 20" fill="none"><path d="m5 5 10 10M15 5 5 15" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button>
-      </div>
-      <p class="notice" id="account-notice"><strong>Inicia sesión para guardar o restaurar tu entorno.</strong> El proyecto ya está conectado automáticamente; solo tú autorizas tu cuenta de GitHub.</p>
-      <div class="auth-provider-list" aria-label="Proveedores de inicio de sesión">
-        <button class="auth-provider" type="button" data-provider="github" disabled><span class="provider-mark" aria-hidden="true">GH</span>Continuar con GitHub</button>
-      </div>
-      <p class="auth-setup-note">Después de iniciar sesión, solo el usuario propietario podrá leer o sobrescribir su snapshot. Se cifra en tu navegador con una frase secreta antes de subirlo: guárdala aparte, porque no se puede recuperar.</p>
-      <div class="auth-doc-links">
-        <a href="https://supabase.com/docs/guides/auth/social-login/auth-github" target="_blank" rel="noreferrer">GitHub ↗</a>
-      </div>
-      <div class="cloud-actions" id="cloud-actions" hidden>
-        <button class="cloud-button" id="cloud-save" type="button">Guardar VM cifrada</button>
-        <button class="cloud-button" id="cloud-restore" type="button">Restaurar VM</button>
-      </div>
-      <div class="account-actions">
-        <p class="account-message" id="account-message" role="status" aria-live="polite">Conectando con el servicio de cuentas…</p>
-        <button class="secondary-button" id="signout-button" type="button" hidden>Cerrar sesión</button>
-      </div>
-      <div class="dialog-actions"><button class="secondary-button" type="button" data-close>Entendido</button></div>
-    </section>
-  </div>
-  <div class="modal-backdrop" id="snapshot-modal" role="presentation">
-    <section class="dialog" role="dialog" aria-modal="true" aria-labelledby="snapshot-title">
-      <div class="dialog-header">
-        <div><h1 id="snapshot-title">Cifrar respaldo</h1><p class="intro" id="snapshot-description">Define una frase secreta para cifrar el snapshot antes de subirlo.</p></div>
-        <button class="close-button" type="button" data-close aria-label="Cerrar"><svg viewBox="0 0 20 20" fill="none"><path d="m5 5 10 10M15 5 5 15" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button>
-      </div>
-      <form class="snapshot-form" id="snapshot-form">
-        <label>Frase secreta (mínimo 12 caracteres)
-          <input id="snapshot-passphrase" type="password" minlength="12" autocomplete="new-password" required>
-        </label>
-        <p class="helper">Se usa para cifrado AES-GCM en tu navegador y nunca se envía al servidor. La necesitarás para restaurar. Si la pierdes, el snapshot no se puede recuperar.</p>
-        <div class="dialog-actions">
-          <button class="secondary-button" type="button" data-close>Cancelar</button>
-          <button class="primary-button" id="snapshot-submit" type="submit">Continuar</button>
-        </div>
-      </form>
-    </section>
-  </div>
   <input class="sr-only" id="restore-input" type="file" accept="application/json,.json,application/octet-stream,.bin" aria-label="Seleccionar archivo de espacio de trabajo o estado de v86">
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
@@ -320,10 +248,6 @@
       "use strict";
 
       const STORAGE_KEY = "openweb-linux-workspace-v1";
-      const DEFAULT_SUPABASE_CONFIG = Object.freeze({
-        url: "https://zdmeoisddxqknbvmslpn.supabase.co",
-        key: "sb_publishable_CTOVTjgcNrwLyjiA6DURVA_-iEAtYps",
-      });
       const output = document.getElementById("terminal-content");
       const scroll = document.getElementById("terminal-scroll");
       const restoreInput = document.getElementById("restore-input");
@@ -334,9 +258,6 @@
       const history = [];
       let emulator = null;
       let vmRunning = false;
-      let supabase = null;
-      let supabaseConfig = null;
-      let cloudAction = null;
       let currentPath = "/";
       let historyIndex = 0;
       let toastTimer;
@@ -603,233 +524,6 @@
         modalReturnFocus = null;
       }
 
-      function setAccountMessage(message) {
-        document.getElementById("account-message").textContent = message;
-      }
-
-      function updateAccountUI(session) {
-        const signedIn = Boolean(session && session.user);
-        document.getElementById("account-button").querySelector(".button-label").textContent = signedIn
-          ? (session.user.email || "Cuenta")
-          : "Cuenta";
-        document.getElementById("account-notice").hidden = signedIn;
-        document.querySelector(".auth-provider-list").hidden = signedIn;
-        document.querySelector(".auth-setup-note").hidden = signedIn;
-        document.querySelector(".auth-doc-links").hidden = signedIn;
-        document.getElementById("cloud-actions").hidden = !signedIn;
-        document.getElementById("signout-button").hidden = !signedIn;
-        if (signedIn) setAccountMessage("Sesión iniciada: " + (session.user.email || session.user.id));
-      }
-
-      function isPrivilegedSupabaseKey(key) {
-        if (/^(sb_secret_|service[_-]?role)/i.test(key)) return true;
-        const payload = key.split(".")[1];
-        if (!payload) return false;
-        try {
-          const normalized = payload.replace(/-/g, "+").replace(/_/g, "/");
-          const decoded = JSON.parse(atob(normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "=")));
-          return decoded.role === "service_role";
-        } catch {
-          return false;
-        }
-      }
-
-      async function connectSupabase(config) {
-        const parsed = new URL(config.url);
-        if (parsed.protocol !== "https:" || !parsed.hostname.endsWith(".supabase.co")) {
-          throw new Error("Usa la URL HTTPS del proyecto Supabase (https://<project-ref>.supabase.co).");
-        }
-        if (!config.key.trim() || isPrivilegedSupabaseKey(config.key.trim())) {
-          throw new Error("Usa únicamente la publishable key o anon key del proyecto. Nunca una service_role.");
-        }
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 10000);
-        let settings;
-        try {
-          const response = await fetch(parsed.origin + "/auth/v1/settings", {
-            headers: { apikey: config.key.trim() },
-            signal: controller.signal,
-          });
-          if (!response.ok) throw new Error("Supabase respondió HTTP " + response.status + ". Comprueba la URL y la publishable key.");
-          settings = await response.json();
-        } catch (error) {
-          if (error.name === "AbortError") throw new Error("Supabase no respondió en 10 segundos.");
-          throw error;
-        } finally {
-          clearTimeout(timeout);
-        }
-        const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2.57.4");
-        supabaseConfig = { url: parsed.origin, key: config.key.trim() };
-        supabase = createClient(supabaseConfig.url, supabaseConfig.key, {
-          auth: {
-            persistSession: true,
-            autoRefreshToken: true,
-            detectSessionInUrl: true,
-            flowType: "pkce",
-          },
-        });
-        supabase.auth.onAuthStateChange((event, session) => {
-          updateAccountUI(session);
-          if (event === "SIGNED_IN") showToast("Sesión iniciada. Los snapshots siguen cifrados en tu navegador.");
-          if (event === "SIGNED_OUT") setAccountMessage("Sesión cerrada.");
-        });
-        const { data, error } = await supabase.auth.getSession();
-        if (error) throw error;
-        updateAccountUI(data.session);
-        setAccountMessage(data.session
-          ? "Sesión iniciada: " + (data.session.user.email || data.session.user.id)
-          : "El servicio de cuentas está listo. " + (settings.external && settings.external.github
-            ? "Elige un proveedor habilitado para iniciar sesión."
-            : "Activa GitHub en Authentication → Providers de Supabase."));
-        document.getElementById("account-notice").hidden = true;
-        document.querySelectorAll("[data-provider]").forEach(button => {
-          button.disabled = !settings.external || settings.external[button.dataset.provider] !== true;
-        });
-      }
-
-      function snapshotKey(passphrase, salt) {
-        return crypto.subtle.importKey("raw", new TextEncoder().encode(passphrase), "PBKDF2", false, ["deriveKey"])
-          .then(key => crypto.subtle.deriveKey(
-            { name: "PBKDF2", salt, iterations: 310000, hash: "SHA-256" },
-            key,
-            { name: "AES-GCM", length: 256 },
-            false,
-            ["encrypt", "decrypt"]
-          ));
-      }
-
-      async function encryptSnapshot(state, passphrase) {
-        const magic = new TextEncoder().encode("OWSNAP01");
-        const salt = crypto.getRandomValues(new Uint8Array(16));
-        const iv = crypto.getRandomValues(new Uint8Array(12));
-        const key = await snapshotKey(passphrase, salt);
-        const ciphertext = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, state));
-        const envelope = new Uint8Array(magic.length + salt.length + iv.length + ciphertext.length);
-        envelope.set(magic, 0);
-        envelope.set(salt, magic.length);
-        envelope.set(iv, magic.length + salt.length);
-        envelope.set(ciphertext, magic.length + salt.length + iv.length);
-        return new Blob([envelope], { type: "application/octet-stream" });
-      }
-
-      async function decryptSnapshot(blob, passphrase) {
-        const envelope = new Uint8Array(await blob.arrayBuffer());
-        const magic = new TextEncoder().encode("OWSNAP01");
-        if (envelope.length < magic.length + 16 + 12 + 16 || !magic.every((value, index) => envelope[index] === value)) {
-          throw new Error("El archivo guardado no es un snapshot cifrado de OpenWeb Linux.");
-        }
-        const salt = envelope.slice(magic.length, magic.length + 16);
-        const iv = envelope.slice(magic.length + 16, magic.length + 28);
-        const ciphertext = envelope.slice(magic.length + 28);
-        const key = await snapshotKey(passphrase, salt);
-        try {
-          return await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, ciphertext);
-        } catch {
-          throw new Error("La frase secreta es incorrecta o el snapshot está dañado.");
-        }
-      }
-
-      async function uploadCloudSnapshot(blob, session) {
-        const { Upload } = await import("https://esm.sh/tus-js-client@4.3.1");
-        const projectUrl = new URL(supabaseConfig.url);
-        const storageHost = projectUrl.hostname.endsWith(".supabase.co")
-          ? projectUrl.hostname.replace(/\.supabase\.co$/, ".storage.supabase.co")
-          : projectUrl.host;
-        const endpoint = projectUrl.protocol + "//" + storageHost + "/storage/v1/upload/resumable";
-        const objectName = session.user.id + "/openweb-linux.ows";
-        await new Promise((resolve, reject) => {
-          const upload = new Upload(blob, {
-            endpoint,
-            retryDelays: [0, 3000, 5000, 10000, 20000],
-            headers: {
-              authorization: "Bearer " + session.access_token,
-              apikey: supabaseConfig.key,
-              "x-upsert": "true",
-            },
-            uploadDataDuringCreation: true,
-            removeFingerprintOnSuccess: true,
-            chunkSize: 6 * 1024 * 1024,
-            metadata: {
-              bucketName: "vm-snapshots",
-              objectName,
-              contentType: "application/octet-stream",
-              cacheControl: "3600",
-              metadata: JSON.stringify({ clientEncrypted: true, format: "OWSNAP01" }),
-            },
-            onError: reject,
-            onProgress: (uploaded, total) => {
-              storageStatus.textContent = "Subiendo snapshot cifrado · " + Math.floor(uploaded / total * 100) + "%";
-            },
-            onSuccess: resolve,
-          });
-          upload.start();
-        });
-      }
-
-      async function saveCloudSnapshot(passphrase) {
-        if (!emulator || !vmRunning) throw new Error("Primero inicia la máquina virtual.");
-        const { data, error } = await supabase.auth.getSession();
-        if (error) throw error;
-        if (!data.session) throw new Error("Inicia sesión antes de guardar en la nube.");
-        const { data: userData, error: userError } = await supabase.auth.getUser();
-        if (userError) throw userError;
-        if (!userData.user || userData.user.id !== data.session.user.id) {
-          throw new Error("La sesión cambió. Inicia sesión de nuevo antes de guardar.");
-        }
-        storageStatus.textContent = "Creando estado de v86…";
-        const state = await emulator.save_state();
-        storageStatus.textContent = "Cifrando snapshot en este dispositivo…";
-        const encrypted = await encryptSnapshot(state, passphrase);
-        await uploadCloudSnapshot(encrypted, data.session);
-        storageStatus.textContent = "Snapshot cifrado guardado en tu cuenta";
-        showToast("Snapshot cifrado guardado en la nube. Conserva tu frase secreta.");
-      }
-
-      async function restoreCloudSnapshot(passphrase) {
-        const { data, error } = await supabase.auth.getSession();
-        if (error) throw error;
-        if (!data.session) throw new Error("Inicia sesión antes de restaurar desde la nube.");
-        const { data: userData, error: userError } = await supabase.auth.getUser();
-        if (userError) throw userError;
-        if (!userData.user) throw new Error("La sesión no tiene un usuario autenticado válido.");
-        storageStatus.textContent = "Descargando tu snapshot privado…";
-        const path = userData.user.id + "/openweb-linux.ows";
-        const { data: blob, error: downloadError } = await supabase.storage.from("vm-snapshots").download(path);
-        if (downloadError) throw downloadError;
-        storageStatus.textContent = "Descifrando snapshot en este dispositivo…";
-        const state = await decryptSnapshot(blob, passphrase);
-        if (!emulator) await bootVM(state);
-        else {
-          emulator.stop();
-          vmRunning = false;
-          await emulator.restore_state(state);
-          emulator.run();
-          vmRunning = true;
-          showVmScreen(true);
-          document.getElementById("boot-button").querySelector(".button-label").textContent = "Pausar Debian";
-          storageStatus.textContent = "Snapshot de la nube restaurado";
-        }
-      }
-
-      function openSnapshotPrompt(action) {
-        if (!supabase) {
-          showToast("Conecta y configura un proyecto Supabase desde Cuenta antes de usar el guardado en la nube.");
-          openModal("account-modal");
-          return;
-        }
-        cloudAction = action;
-        const restoring = action === "restore";
-        document.getElementById("snapshot-title").textContent = restoring ? "Descifrar respaldo" : "Cifrar respaldo";
-        document.getElementById("snapshot-description").textContent = restoring
-          ? "Escribe la misma frase secreta que usaste al guardar."
-          : "Define una frase secreta para cifrar el snapshot antes de subirlo.";
-        document.getElementById("snapshot-submit").textContent = restoring ? "Descifrar y restaurar" : "Cifrar y subir";
-        document.getElementById("snapshot-passphrase").value = "";
-        document.getElementById("snapshot-passphrase").autocomplete = restoring ? "current-password" : "new-password";
-        openModal("snapshot-modal");
-        document.getElementById("snapshot-passphrase").focus();
-      }
-
       function showVmScreen(visible) {
         document.getElementById("terminal-content").style.display = visible ? "none" : "";
         document.getElementById("vm-container").style.display = visible ? "flex" : "none";
@@ -950,50 +644,6 @@
       document.getElementById("restore-button").addEventListener("click", () => restoreInput.click());
       document.getElementById("setup-button").addEventListener("click", () => openModal("setup-modal"));
       document.getElementById("apt-button").addEventListener("click", () => openModal("apt-modal"));
-      document.getElementById("account-button").addEventListener("click", () => openModal("account-modal"));
-      document.querySelectorAll("[data-provider]").forEach(button => button.addEventListener("click", async () => {
-        try {
-          if (!supabase) throw new Error("El servicio de cuentas aún no está disponible. Inténtalo de nuevo en unos segundos.");
-          const { error } = await supabase.auth.signInWithOAuth({
-            provider: button.dataset.provider,
-            options: { redirectTo: location.origin + location.pathname + location.search },
-          });
-          if (error) throw error;
-        } catch (error) {
-          setAccountMessage("No se pudo iniciar sesión: " + error.message);
-        }
-      }));
-      document.getElementById("signout-button").addEventListener("click", async () => {
-        if (!supabase) return;
-        const { error } = await supabase.auth.signOut();
-        if (error) setAccountMessage("No se pudo cerrar la sesión: " + error.message);
-        else updateAccountUI(null);
-      });
-      document.getElementById("cloud-save").addEventListener("click", () => openSnapshotPrompt("save"));
-      document.getElementById("cloud-restore").addEventListener("click", () => openSnapshotPrompt("restore"));
-      document.getElementById("snapshot-form").addEventListener("submit", async event => {
-        event.preventDefault();
-        const passphrase = document.getElementById("snapshot-passphrase").value;
-        if (passphrase.length < 12) {
-          showToast("Usa una frase secreta de al menos 12 caracteres.");
-          return;
-        }
-        const submit = document.getElementById("snapshot-submit");
-        submit.disabled = true;
-        try {
-          if (cloudAction === "save") await saveCloudSnapshot(passphrase);
-          else await restoreCloudSnapshot(passphrase);
-          closeModals();
-        } catch (error) {
-          showToast("No se completó la operación en la nube: " + error.message);
-          setAccountMessage("Error del respaldo: " + error.message);
-          storageStatus.textContent = "Error del respaldo en la nube";
-        } finally {
-          submit.disabled = false;
-          document.getElementById("snapshot-passphrase").value = "";
-          cloudAction = null;
-        }
-      });
       document.getElementById("fullscreen-button").addEventListener("click", async () => {
         try {
           if (!document.fullscreenElement) await document.documentElement.requestFullscreen();
@@ -1094,13 +744,13 @@
       } catch (error) {
         appendLine("No se pudo leer el guardado local: " + error.message, "error");
       }
-      connectSupabase(DEFAULT_SUPABASE_CONFIG).catch(error => {
-        supabase = null;
-        supabaseConfig = null;
-        document.querySelectorAll("[data-provider]").forEach(button => { button.disabled = true; });
-        document.getElementById("account-notice").hidden = false;
-        setAccountMessage("No se pudo conectar con el servicio de cuentas: " + error.message);
-      });
+      try {
+        localStorage.removeItem("openweb-supabase-config-v1");
+        localStorage.removeItem("sb-zdmeoisddxqknbvmslpn-auth-token");
+        localStorage.removeItem("sb-zdmeoisddxqknbvmslpn-auth-token-code-verifier");
+      } catch (error) {
+        appendLine("No se pudo limpiar la sesión antigua de cuentas: " + error.message, "error");
+      }
       appendLine("Pulsa Arrancar Debian para iniciar el instalador; escribe help para comandos del espacio web.", "muted");
       focusPrompt();
     })();
