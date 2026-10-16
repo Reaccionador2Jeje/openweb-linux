@@ -272,7 +272,7 @@
           <label>Publishable key / anon key
             <input id="supabase-key" type="password" autocomplete="off" placeholder="sb_publishable_… o anon key heredada" required>
           </label>
-          <p class="helper">Obtén ambos valores en Supabase → Project Settings → API. La publishable/anon key es pública; el secreto service_role nunca debe usarse en el navegador. Estos valores se guardan solo en este navegador.</p>
+          <p class="helper">Este sitio ya tiene un proyecto predeterminado. Si cambias estos valores, la configuración personalizada se guarda solo en este navegador. La publishable/anon key es pública; nunca uses una clave service_role ni un secreto OAuth.</p>
           <button class="primary-button" type="submit">Conectar proyecto</button>
         </form>
       </details>
@@ -313,6 +313,10 @@
       "use strict";
 
       const STORAGE_KEY = "openweb-linux-workspace-v1";
+      const DEFAULT_SUPABASE_CONFIG = Object.freeze({
+        url: "https://zdmeoisddxqknbvmslpn.supabase.co",
+        key: "sb_publishable_CTOVTjgcNrwLyjiA6DURVA_-iEAtYps",
+      });
       const output = document.getElementById("terminal-content");
       const scroll = document.getElementById("terminal-scroll");
       const restoreInput = document.getElementById("restore-input");
@@ -577,14 +581,18 @@
 
       function loadSavedBackendConfig() {
         try {
-          const config = JSON.parse(localStorage.getItem("openweb-supabase-config-v1") || "null");
-          if (!config || typeof config.url !== "string" || typeof config.key !== "string") return null;
+          const savedConfig = JSON.parse(localStorage.getItem("openweb-supabase-config-v1") || "null");
+          const config = savedConfig && typeof savedConfig.url === "string" && typeof savedConfig.key === "string"
+            ? savedConfig
+            : DEFAULT_SUPABASE_CONFIG;
           document.getElementById("supabase-url").value = config.url;
           document.getElementById("supabase-key").value = config.key;
           return config;
         } catch (error) {
           setAccountMessage("No se pudo leer la configuración guardada: " + error.message);
-          return null;
+          document.getElementById("supabase-url").value = DEFAULT_SUPABASE_CONFIG.url;
+          document.getElementById("supabase-key").value = DEFAULT_SUPABASE_CONFIG.key;
+          return DEFAULT_SUPABASE_CONFIG;
         }
       }
 
