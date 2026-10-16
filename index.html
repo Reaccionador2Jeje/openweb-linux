@@ -121,17 +121,14 @@
     .auth-setup-note { margin: 14px 0 0; color: var(--muted); font-size: 11px; line-height: 1.7; }
     .auth-doc-links { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 10px; font-size: 10px; }
     .auth-doc-links a { color: var(--lime); text-decoration: underline; text-underline-offset: 3px; }
-    .backend-config { display: grid; gap: 9px; margin-top: 18px; padding-top: 15px; border-top: 1px solid #30362e; }
-    .backend-config summary { color: #c7cec0; cursor: pointer; font-size: 11px; font-weight: 650; }
-    .backend-config label, .snapshot-form label { display: grid; gap: 5px; color: #abb3a2; font-size: 10px; }
-    .backend-config input, .snapshot-form input {
+    .snapshot-form label { display: grid; gap: 5px; color: #abb3a2; font-size: 10px; }
+    .snapshot-form input {
       width: 100%; min-height: 36px; padding: 8px 10px; border: 1px solid #384033; border-radius: 5px;
       outline: none; background: #10130f; color: var(--text); font: 11px var(--mono);
     }
-    .backend-config input:focus, .snapshot-form input:focus { border-color: var(--lime); }
-    .backend-config .helper { margin: 0; color: #7f8878; font-size: 10px; line-height: 1.6; }
+    .snapshot-form input:focus { border-color: var(--lime); }
     .cloud-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 16px; }
-    .auth-provider-list[hidden], .auth-setup-note[hidden], .auth-doc-links[hidden], .backend-config[hidden], .cloud-actions[hidden], #signout-button[hidden], #account-notice[hidden] { display: none; }
+    .auth-provider-list[hidden], .auth-setup-note[hidden], .auth-doc-links[hidden], .cloud-actions[hidden], #signout-button[hidden], #account-notice[hidden] { display: none; }
     .cloud-button { min-height: 36px; border: 1px solid #3a4135; border-radius: 6px; background: #1d211b; color: #e1e5db; font-size: 11px; }
     .snapshot-form { display: grid; gap: 13px; }
     .snapshot-form .helper { margin: 0; color: var(--muted); font-size: 10px; line-height: 1.6; }
@@ -253,7 +250,7 @@
         <div><h1 id="account-title">Conserva tu entorno</h1><p class="intro" id="account-description">Conecta tu cuenta para guardar la máquina virtual cifrada y recuperarla en otro dispositivo.</p></div>
         <button class="close-button" type="button" data-close aria-label="Cerrar"><svg viewBox="0 0 20 20" fill="none"><path d="m5 5 10 10M15 5 5 15" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button>
       </div>
-      <p class="notice" id="account-notice"><strong>Hace falta conectar un proyecto Supabase.</strong> Las claves publicables no son contraseñas; nunca pongas aquí una clave service_role ni un secreto OAuth.</p>
+      <p class="notice" id="account-notice"><strong>Inicia sesión para guardar o restaurar tu entorno.</strong> El proyecto ya está conectado automáticamente; solo tú autorizas tu cuenta de Google o GitHub.</p>
       <div class="auth-provider-list" aria-label="Proveedores de inicio de sesión">
         <button class="auth-provider" type="button" data-provider="google" disabled><span class="provider-mark" aria-hidden="true">G</span>Continuar con Google</button>
         <button class="auth-provider" type="button" data-provider="github" disabled><span class="provider-mark" aria-hidden="true">GH</span>Continuar con GitHub</button>
@@ -263,25 +260,12 @@
         <a href="https://supabase.com/docs/guides/auth/social-login/auth-google" target="_blank" rel="noreferrer">Google ↗</a>
         <a href="https://supabase.com/docs/guides/auth/social-login/auth-github" target="_blank" rel="noreferrer">GitHub ↗</a>
       </div>
-      <details class="backend-config" id="backend-config">
-        <summary>Configurar tu proyecto Supabase</summary>
-        <form id="backend-config-form">
-          <label>Project URL
-            <input id="supabase-url" type="url" inputmode="url" placeholder="https://tu-proyecto.supabase.co" autocomplete="url" required>
-          </label>
-          <label>Publishable key / anon key
-            <input id="supabase-key" type="password" autocomplete="off" placeholder="sb_publishable_… o anon key heredada" required>
-          </label>
-          <p class="helper">Este sitio ya tiene un proyecto predeterminado. Si cambias estos valores, la configuración personalizada se guarda solo en este navegador. La publishable/anon key es pública; nunca uses una clave service_role ni un secreto OAuth.</p>
-          <button class="primary-button" type="submit">Conectar proyecto</button>
-        </form>
-      </details>
       <div class="cloud-actions" id="cloud-actions" hidden>
         <button class="cloud-button" id="cloud-save" type="button">Guardar VM cifrada</button>
         <button class="cloud-button" id="cloud-restore" type="button">Restaurar VM</button>
       </div>
       <div class="account-actions">
-        <p class="account-message" id="account-message" role="status" aria-live="polite">Sin conexión con un backend.</p>
+        <p class="account-message" id="account-message" role="status" aria-live="polite">Conectando con el servicio de cuentas…</p>
         <button class="secondary-button" id="signout-button" type="button" hidden>Cerrar sesión</button>
       </div>
       <div class="dialog-actions"><button class="secondary-button" type="button" data-close>Entendido</button></div>
@@ -573,27 +557,9 @@
         document.querySelector(".auth-provider-list").hidden = signedIn;
         document.querySelector(".auth-setup-note").hidden = signedIn;
         document.querySelector(".auth-doc-links").hidden = signedIn;
-        document.getElementById("backend-config").hidden = signedIn;
         document.getElementById("cloud-actions").hidden = !signedIn;
         document.getElementById("signout-button").hidden = !signedIn;
         if (signedIn) setAccountMessage("Sesión iniciada: " + (session.user.email || session.user.id));
-      }
-
-      function loadSavedBackendConfig() {
-        try {
-          const savedConfig = JSON.parse(localStorage.getItem("openweb-supabase-config-v1") || "null");
-          const config = savedConfig && typeof savedConfig.url === "string" && typeof savedConfig.key === "string"
-            ? savedConfig
-            : DEFAULT_SUPABASE_CONFIG;
-          document.getElementById("supabase-url").value = config.url;
-          document.getElementById("supabase-key").value = config.key;
-          return config;
-        } catch (error) {
-          setAccountMessage("No se pudo leer la configuración guardada: " + error.message);
-          document.getElementById("supabase-url").value = DEFAULT_SUPABASE_CONFIG.url;
-          document.getElementById("supabase-key").value = DEFAULT_SUPABASE_CONFIG.key;
-          return DEFAULT_SUPABASE_CONFIG;
-        }
       }
 
       function isPrivilegedSupabaseKey(key) {
@@ -653,7 +619,7 @@
         updateAccountUI(data.session);
         setAccountMessage(data.session
           ? "Sesión iniciada: " + (data.session.user.email || data.session.user.id)
-          : "Proyecto conectado. " + (["google", "github"].some(provider => settings.external && settings.external[provider])
+          : "El servicio de cuentas está listo. " + (["google", "github"].some(provider => settings.external && settings.external[provider])
             ? "Elige un proveedor habilitado para iniciar sesión."
             : "Activa Google o GitHub en Authentication → Providers de Supabase."));
         document.getElementById("account-notice").hidden = true;
@@ -928,7 +894,7 @@
       document.getElementById("account-button").addEventListener("click", () => openModal("account-modal"));
       document.querySelectorAll("[data-provider]").forEach(button => button.addEventListener("click", async () => {
         try {
-          if (!supabase) throw new Error("Conecta primero tu proyecto Supabase.");
+          if (!supabase) throw new Error("El servicio de cuentas aún no está disponible. Inténtalo de nuevo en unos segundos.");
           const { error } = await supabase.auth.signInWithOAuth({
             provider: button.dataset.provider,
             options: { redirectTo: location.origin + location.pathname + location.search },
@@ -938,25 +904,6 @@
           setAccountMessage("No se pudo iniciar sesión: " + error.message);
         }
       }));
-      document.getElementById("backend-config-form").addEventListener("submit", async event => {
-        event.preventDefault();
-        const config = {
-          url: document.getElementById("supabase-url").value.trim().replace(/\/+$/, ""),
-          key: document.getElementById("supabase-key").value.trim(),
-        };
-        try {
-          setAccountMessage("Conectando con Supabase…");
-          await connectSupabase(config);
-          localStorage.setItem("openweb-supabase-config-v1", JSON.stringify(config));
-          document.getElementById("backend-config").open = false;
-          showToast("Proyecto Supabase conectado en este navegador.");
-        } catch (error) {
-          supabase = null;
-          supabaseConfig = null;
-          document.querySelectorAll("[data-provider]").forEach(button => { button.disabled = true; });
-          setAccountMessage("No se pudo conectar el proyecto: " + error.message);
-        }
-      });
       document.getElementById("signout-button").addEventListener("click", async () => {
         if (!supabase) return;
         const { error } = await supabase.auth.signOut();
@@ -1087,14 +1034,13 @@
       } catch (error) {
         appendLine("No se pudo leer el guardado local: " + error.message, "error");
       }
-      const savedBackendConfig = loadSavedBackendConfig();
-      if (savedBackendConfig) {
-        connectSupabase(savedBackendConfig).catch(error => {
-          supabase = null;
-          supabaseConfig = null;
-          setAccountMessage("No se pudo conectar con Supabase: " + error.message);
-        });
-      }
+      connectSupabase(DEFAULT_SUPABASE_CONFIG).catch(error => {
+        supabase = null;
+        supabaseConfig = null;
+        document.querySelectorAll("[data-provider]").forEach(button => { button.disabled = true; });
+        document.getElementById("account-notice").hidden = false;
+        setAccountMessage("No se pudo conectar con el servicio de cuentas: " + error.message);
+      });
       appendLine("Pulsa Arrancar Debian para iniciar el instalador; escribe help para comandos del espacio web.", "muted");
       focusPrompt();
     })();
