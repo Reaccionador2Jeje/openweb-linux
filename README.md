@@ -21,7 +21,7 @@
 ## Pruébalo / Quick start
 
 1. Visita la [demo de OpenWeb Linux](https://reaccionador2jeje.github.io/openweb-linux/) desde un navegador moderno.
-2. Pulsa **Arrancar Alpine** y escribe `root` en la consola cuando aparezca el inicio de sesión.
+2. Alpine arranca automáticamente al abrir la página; escribe `root` en la consola cuando aparezca el inicio de sesión. Con **Pausar/Reanudar Alpine** vuelves al espacio web del navegador.
 3. Para instalar Alpine en el disco virtual, ejecuta `setup-alpine` y sigue las indicaciones. Elige `eth0` para la red y `/dev/sda` como disco; la instalación debe mantenerse pequeña para caber en 512 MiB.
 4. Usa **Guardar** para conservar el espacio de trabajo o exportar un estado de v86. Las copias locales solo existen en ese navegador.
 

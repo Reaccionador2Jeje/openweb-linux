@@ -268,7 +268,7 @@
         </div>
       </div>
       <div class="bottom-bar">
-        <span class="bottom-hint">help · save · apk · terminales comparten archivos</span>
+        <span class="bottom-hint">Alpine corre en la VM · Pausa vuelve al espacio web · help · save</span>
         <button class="keyboard-toggle" id="keyboard-toggle" type="button" aria-expanded="false" aria-controls="mobile-keyboard">⌨ Teclado</button>
         <span id="storage-status">Guardado local activado</span>
       </div>
@@ -314,7 +314,7 @@
       <p class="notice"><strong>Alpine se inicia como un sistema live:</strong> la imagen Alpine virt x86 incluye un sistema mínimo y usa 256 MiB de RAM. Inicia como <code>root</code>; ejecuta <code>setup-alpine</code> para configurar la red y, si quieres conservar una instalación en el disco virtual de 512 MiB, sigue las indicaciones para instalar en <code>/dev/sda</code>. Guarda el estado de v86 antes de cerrar o recargar.</p>
       <p class="guide-note">La imagen virt ocupa unos 49 MiB. Incluye controladores pensados para máquinas virtuales y usa virtio en v86. La descarga de paquetes al configurar Alpine depende de tu conexión y del mirror seleccionado.</p>
       <ol class="setup-list">
-        <li>Pulsa <strong>Arrancar Alpine</strong>. En la consola de inicio, escribe <code>root</code> para entrar. Ya puedes usar el sistema live; ejecuta <code>setup-alpine</code> si quieres instalarlo al disco.</li>
+        <li><strong>Alpine arranca solo</strong> al abrir la página. En la consola de inicio, escribe <code>root</code> para entrar. Ya puedes usar el sistema live; ejecuta <code>setup-alpine</code> si quieres instalarlo al disco.</li>
         <li>En la configuración, elige <code>eth0</code> y una mirror Alpine cercana. La red pasa por un relay público; no uses contraseñas ni datos sensibles durante esa conexión.</li>
         <li>La sesión live funciona en memoria. El instalador configura Alpine en el disco; ambas cosas se pierden al cerrar o recargar si no guardas el estado de v86.</li>
         <li>Usa <strong>Guardar</strong> para exportar el estado completo de v86 (.bin) y <strong>Abrir</strong> para restaurarlo. El archivo puede ser muy grande.</li>
@@ -425,7 +425,9 @@
         const line = document.createElement("div");
         line.className = "line" + (kind ? " " + kind : "");
         line.textContent = text;
-        output.appendChild(line);
+        const livePrompt = output.lastElementChild;
+        if (livePrompt && livePrompt.classList.contains("prompt-line")) output.insertBefore(line, livePrompt);
+        else output.appendChild(line);
       }
 
       function renderTerminalTabs() {
@@ -1216,8 +1218,53 @@
         openModal("save-modal");
       }
 
+      let bootingAlpine = false;
+
+      function setSessionStatus(text) {
+        const status = document.querySelector(".session-status");
+        if (status && status.lastChild) status.lastChild.textContent = text;
+      }
+
+      async function startAlpine() {
+        const button = document.getElementById("boot-button");
+        if (bootingAlpine || emulator || !button) return;
+        bootingAlpine = true;
+        try {
+          button.disabled = true;
+          button.querySelector(".button-label").textContent = "Arrancando Alpine";
+          button.title = "Arrancando la máquina virtual";
+          storageStatus.textContent = "Iniciando v86 y cargando Alpine Linux…";
+          setSessionStatus("Arrancando Alpine");
+          appendLine("Arrancando Alpine Linux (v86)…", "green");
+          appendLine("Cargando BIOS e ISO Alpine virt (~49 MiB); el progreso aparece en la barra inferior.", "muted");
+          scroll.scrollTop = scroll.scrollHeight;
+          try {
+            preloadInstaller();
+          } catch (preloadError) {
+            console.warn("No se pudo precargar v86; se cargará durante el arranque.", preloadError);
+          }
+          await bootVM();
+        } catch (error) {
+          if (emulator) emulator.stop();
+          emulator = null;
+          vmRunning = false;
+          storageStatus.textContent = "No se pudo iniciar Alpine";
+          setSessionStatus("Espacio del navegador");
+          appendLine("No se pudo iniciar Alpine: " + error.message, "error");
+          appendLine("El espacio web sigue disponible; pulsa Arrancar Alpine para reintentar.", "muted");
+          showToast("No se pudo iniciar v86: " + error.message);
+          const label = button.querySelector(".button-label");
+          if (label) label.textContent = "Arrancar Alpine";
+          button.title = "Arrancar Alpine Linux";
+        } finally {
+          bootingAlpine = false;
+          button.disabled = false;
+        }
+      }
+
       document.getElementById("boot-button").addEventListener("click", async () => {
         const button = document.getElementById("boot-button");
+        if (bootingAlpine) return;
         if (emulator) {
           if (vmRunning) {
             emulator.stop();
@@ -1226,6 +1273,7 @@
             button.querySelector(".button-label").textContent = "Reanudar Alpine";
             button.title = "Reanudar la máquina virtual";
             storageStatus.textContent = "Alpine pausado en memoria";
+            setSessionStatus("Alpine en pausa");
           } else {
             emulator.run();
             vmRunning = true;
@@ -1233,22 +1281,11 @@
             button.querySelector(".button-label").textContent = "Pausar Alpine";
             button.title = "Pausar la máquina virtual";
             storageStatus.textContent = "Alpine iniciado · red mediante relay público";
+            setSessionStatus("Alpine Linux");
           }
           return;
         }
-        button.disabled = true;
-        storageStatus.textContent = "Iniciando v86 y cargando Alpine Linux…";
-        try {
-          await bootVM();
-        } catch (error) {
-          if (emulator) emulator.stop();
-          emulator = null;
-          vmRunning = false;
-          storageStatus.textContent = "No se pudo iniciar Alpine";
-          showToast("No se pudo iniciar v86: " + error.message);
-        } finally {
-          button.disabled = false;
-        }
+        await startAlpine();
       });
       document.getElementById("boot-button").addEventListener("pointerenter", preloadInstaller, { once: true });
       document.getElementById("boot-button").addEventListener("focus", preloadInstaller, { once: true });
@@ -1412,8 +1449,10 @@
       updateLocalVMRestoreButton().catch(error => {
         appendLine("No se pudo consultar el almacenamiento local de VM: " + error.message, "error");
       });
-      appendLine("Pulsa Arrancar Alpine para iniciar el sistema; escribe help para comandos del espacio web.", "muted");
+      appendLine("OpenWeb Linux · el espacio de inicio es un shell de Alpine Linux", "green");
+      appendLine("Alpine arranca automáticamente en la VM; escribe help para ver los comandos del espacio web.", "muted");
       focusPrompt();
+      setTimeout(startAlpine, 250);
     })();
   </script>
 </body>
