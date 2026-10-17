@@ -86,10 +86,6 @@ button { color: inherit; }
   scrollbar-color: #394032 transparent; scrollbar-width: thin;
 }
 .terminal-content { width: min(100%, 1080px); min-height: 100%; margin: 0 auto; color: #dce1d5; font: 13px/1.85 var(--mono); overflow-wrap: anywhere; }
-.vm-container { display: none; width: calc(100% + clamp(32px, 10vw, 116px)); height: calc(100% + clamp(34px, 8vw, 76px)); min-height: 100%; margin: calc(-1 * clamp(17px, 4vw, 38px)) calc(-1 * clamp(16px, 5vw, 58px)); align-items: center; justify-content: center; overflow: auto; background: #050605; }
-#vm-screen { width: 100%; min-height: 100%; display: flex; align-items: center; justify-content: center; overflow: auto; outline: none; }
-#vm-screen > div { max-width: 100%; color: #ddd; }
-#vm-screen canvas { max-width: 100%; max-height: 100%; object-fit: contain; }
 .line { min-height: 1.85em; white-space: pre-wrap; }
 .line.muted { color: #818a79; }
 .line.green { color: var(--lime); }

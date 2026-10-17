@@ -4,33 +4,33 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#10120f">
-  <meta name="description" content="Prueba Alpine Linux x86 en tu navegador con v86: una VM ligera, terminal de trabajo local, teclado táctil y respaldos sin crear una cuenta.">
+  <meta name="description" content="Shell completo inspirado en Alpine Linux que corre en tu navegador: sistema de archivos persistente, paquetes apk y servicios OpenRC simulados, tuberías, teclado táctil y respaldos sin cuenta.">
   <meta name="robots" content="index, follow">
   <link rel="canonical" href="https://reaccionador2jeje.github.io/openweb-linux/">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="OpenWeb Linux">
   <meta property="og:locale" content="es_ES">
   <meta property="og:url" content="https://reaccionador2jeje.github.io/openweb-linux/">
-  <meta property="og:title" content="OpenWeb Linux — Alpine Linux en tu navegador">
-  <meta property="og:description" content="Prueba una VM ligera de Alpine Linux x86 con v86. Sin instalación local ni cuenta; incluye espacio de trabajo y respaldos locales.">
+  <meta property="og:title" content="OpenWeb Linux — shell de Linux en tu navegador">
+  <meta property="og:description" content="Un sistema de terminal completo inspirado en Alpine Linux: archivos, paquetes apk y servicios simulados que viven en tu navegador. Sin servidor ni cuenta.">
   <meta property="og:image" content="https://reaccionador2jeje.github.io/openweb-linux/public/images/openweb-linux.svg">
   <meta property="og:image:alt" content="Logo de OpenWeb Linux">
   <meta name="twitter:card" content="summary">
-  <meta name="twitter:title" content="OpenWeb Linux — Alpine Linux en tu navegador">
-  <meta name="twitter:description" content="Prueba una VM ligera de Alpine Linux x86 con v86, directamente en el navegador.">
+  <meta name="twitter:title" content="OpenWeb Linux — shell de Linux en tu navegador">
+  <meta name="twitter:description" content="Shell inspirado en Alpine Linux con archivos, paquetes y servicios simulados, directamente en el navegador.">
   <meta name="twitter:image" content="https://reaccionador2jeje.github.io/openweb-linux/public/images/openweb-linux.svg">
   <link rel="icon" type="image/svg+xml" href="./public/images/openweb-linux.svg">
-  <title>OpenWeb Linux — Alpine Linux en tu navegador</title>
+  <title>OpenWeb Linux — shell de Linux en tu navegador</title>
   <script type="application/ld+json">
     {
       "@context": "https://schema.org",
       "@type": "WebApplication",
       "name": "OpenWeb Linux",
       "url": "https://reaccionador2jeje.github.io/openweb-linux/",
-      "description": "Prueba Alpine Linux x86 en una máquina virtual v86 desde el navegador, con espacio de trabajo local y respaldos sin cuenta.",
+      "description": "Shell de terminal completo inspirado en Alpine Linux que se ejecuta en el navegador, con sistema de archivos persistente, paquetes y servicios simulados, sin cuenta.",
       "applicationCategory": "DeveloperApplication",
       "operatingSystem": "Any",
-      "browserRequirements": "Navegador moderno compatible con WebAssembly y HTTPS",
+      "browserRequirements": "Navegador moderno",
       "inLanguage": "es",
       "offers": {
         "@type": "Offer",
@@ -42,28 +42,26 @@
   <link rel="stylesheet" href="./public/css/site.css">
 </head>
 <body>
+  <!-- ===== Aplicación ===== -->
   <div class="app">
     <header class="topbar">
       <div class="brand">
         <img class="brand-mark" src="./public/images/openweb-linux.svg" alt="" aria-hidden="true" width="29" height="29">
         <span>OpenWeb Linux</span>
-        <span class="session-status"><i class="status-dot" aria-hidden="true"></i>Espacio del navegador</span>
+        <span class="session-status"><i class="status-dot" aria-hidden="true"></i>shell local · nada sale de tu navegador</span>
       </div>
-      <nav class="toolbar" aria-label="Acciones de terminal">
-        <button class="tool-button" id="boot-button" type="button" title="Arrancar Alpine Linux" aria-label="Arrancar Alpine Linux">
-          <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="m7 4 9 6-9 6V4Z" fill="currentColor"/></svg><span class="button-label">Arrancar Alpine</span>
+      <nav class="toolbar" aria-label="Acciones del sistema">
+        <button class="tool-button" id="guide-button" type="button" title="Guía del sistema" aria-label="Guía del sistema">
+          <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4 5h12M4 10h12M4 15h12M7 3v4m6 1v4m-4 1v4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span class="button-label">Guía</span>
         </button>
-        <button class="tool-button" id="apk-button" type="button" title="Ayuda del gestor apk" aria-label="Ayuda de apk">
-          <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4 5h12M4 10h12M4 15h12M7 3v4m6 1v4m-4 1v4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span class="button-label">apk</span>
+        <button class="tool-button" id="apk-button" type="button" title="Catálogo apk" aria-label="Catálogo apk">
+          <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="m10 2.5 7 4v7l-7 4-7-4v-7l7-4Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="m3 6.5 7 4 7-4M10 10.5v7" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg><span class="button-label">apk</span>
         </button>
-        <button class="tool-button" id="setup-button" type="button" title="Configurar Alpine Linux" aria-label="Configurar Alpine Linux">
-          <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M10 2.5v2m0 11v2m7.5-7.5h-2m-11 0h-2m12.8-5.3-1.4 1.4M6.1 13.9l-1.4 1.4m10.6 0-1.4-1.4M6.1 6.1 4.7 4.7" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><circle cx="10" cy="10" r="3" stroke="currentColor" stroke-width="1.4"/></svg><span class="button-label">Setup</span>
-        </button>
-        <button class="tool-button" id="restore-button" type="button" title="Opciones para restaurar" aria-label="Opciones para restaurar">
-          <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M10 13V3m0 0L6.5 6.5M10 3l3.5 3.5M4 12v4h12v-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="button-label">Abrir</span>
-        </button>
-        <button class="tool-button" id="save-button" type="button" title="Opciones para guardar el entorno" aria-label="Opciones para guardar el entorno">
+        <button class="tool-button" id="save-button" type="button" title="Guardar el sistema" aria-label="Guardar el sistema">
           <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M10 3v10m0 0 3.5-3.5M10 13 6.5 9.5M4 13v4h12v-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="button-label">Guardar</span>
+        </button>
+        <button class="tool-button" id="restore-button" type="button" title="Restaurar un respaldo" aria-label="Restaurar un respaldo">
+          <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M10 13V3m0 0L6.5 6.5M10 3l3.5 3.5M4 12v4h12v-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="button-label">Abrir</span>
         </button>
         <button class="tool-button" id="fullscreen-button" type="button" title="Pantalla completa" aria-label="Pantalla completa">
           <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M7 3H3v4m10-4h4v4M3 13v4h4m10-4v4h-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="button-label">Pantalla completa</span>
@@ -71,32 +69,29 @@
       </nav>
     </header>
 
-    <main class="terminal-window" aria-label="Terminal web">
+    <!-- ===== Terminal ===== -->
+    <main class="terminal-window" aria-label="Terminal del sistema">
       <div class="terminal-bar">
         <span class="window-controls" aria-hidden="true"><i></i><i></i><i></i></span>
-        <span class="terminal-title">openweb — browser workspace</span>
-        <span class="terminal-title">web</span>
+        <span class="terminal-title">openweb — shell del navegador</span>
+        <span class="terminal-title">local</span>
       </div>
-      <div class="terminal-tabs" id="terminal-tabs" role="tablist" aria-label="Pestañas de terminal">
-        <button class="terminal-tab-action" id="new-terminal-tab" type="button" aria-label="Abrir nueva pestaña de terminal" title="Nueva terminal">+</button>
-        <button class="terminal-tab-action" id="close-terminal-tab" type="button" aria-label="Cerrar pestaña de terminal" title="Cerrar terminal">×</button>
+      <div class="terminal-tabs" id="terminal-tabs" role="tablist" aria-label="Sesiones de terminal">
+        <button class="terminal-tab-action" id="new-terminal-tab" type="button" aria-label="Abrir nueva sesión de terminal" title="Nueva terminal">+</button>
+        <button class="terminal-tab-action" id="close-terminal-tab" type="button" aria-label="Cerrar sesión de terminal" title="Cerrar terminal">×</button>
       </div>
       <div class="terminal-scroll" id="terminal-scroll">
         <div class="terminal-sessions" id="terminal-sessions">
-          <div class="terminal-content terminal-session" id="terminal-content" role="tabpanel" aria-live="polite" aria-label="Salida de Terminal 1"></div>
-        </div>
-        <div class="vm-container" id="vm-container">
-          <div id="vm-screen" tabindex="0" aria-label="Pantalla de la máquina virtual Alpine Linux">
-            <div style="white-space:pre;font:14px monospace;line-height:14px"></div>
-            <canvas style="display:none"></canvas>
-          </div>
+          <div class="terminal-content terminal-session" id="terminal-content" role="tabpanel" aria-live="polite" aria-label="Salida de ash 1"></div>
         </div>
       </div>
       <div class="bottom-bar">
-        <span class="bottom-hint">Alpine corre en la VM · Pausa vuelve al espacio web · help · save</span>
+        <span class="bottom-hint">help · neofetch · apk add cowsay · | y &gt; para tuberías y redirección</span>
         <button class="keyboard-toggle" id="keyboard-toggle" type="button" aria-expanded="false" aria-controls="mobile-keyboard">⌨ Teclado</button>
         <span id="storage-status">Guardado local activado</span>
       </div>
+
+      <!-- ===== Teclado táctil ===== -->
       <div class="mobile-keyboard" id="mobile-keyboard" aria-label="Teclado en pantalla" hidden>
         <div class="keyboard-row" data-key-row="1234567890"></div>
         <div class="keyboard-row" data-key-row="qwertyuiop"></div>
@@ -113,6 +108,9 @@
           <button class="keyboard-key" type="button" data-key-text="-">-</button>
           <button class="keyboard-key" type="button" data-key-text="_">_</button>
           <button class="keyboard-key" type="button" data-key-text=".">.</button>
+          <button class="keyboard-key" type="button" data-key-text="|">|</button>
+          <button class="keyboard-key" type="button" data-key-text=">">&gt;</button>
+          <button class="keyboard-key" type="button" data-key-text="~">~</button>
           <button class="keyboard-key" type="button" data-key-action="left" aria-label="Flecha izquierda">←</button>
           <button class="keyboard-key" type="button" data-key-action="down" aria-label="Flecha abajo">↓</button>
           <button class="keyboard-key" type="button" data-key-action="up" aria-label="Flecha arriba">↑</button>
@@ -130,84 +128,87 @@
     </main>
   </div>
 
+  <!-- ===== Diálogo: guía ===== -->
   <div class="modal-backdrop" id="setup-modal" role="presentation">
     <section class="dialog" role="dialog" aria-modal="true" aria-labelledby="setup-title">
       <div class="dialog-header">
-        <div><h1 id="setup-title">Alpine Linux en la web</h1><p class="intro">OpenWeb arranca Alpine Linux, una distribución ligera para sistemas virtualizados, dentro de una máquina x86.</p></div>
+        <div><h1 id="setup-title">OpenWeb Linux en la web</h1><p class="intro">Un shell completo inspirado en Alpine Linux (busybox, apk y OpenRC simulados) que corre entero en tu navegador. Todo lo que crees se guarda aquí mismo, sin cuenta ni servidor.</p></div>
         <button class="close-button" type="button" data-close aria-label="Cerrar"><svg viewBox="0 0 20 20" fill="none"><path d="m5 5 10 10M15 5 5 15" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button>
       </div>
-      <p class="notice"><strong>Alpine se inicia como un sistema live:</strong> la imagen Alpine virt x86 incluye un sistema mínimo y usa 256 MiB de RAM. Inicia como <code>root</code>; ejecuta <code>setup-alpine</code> para configurar la red y, si quieres conservar una instalación en el disco virtual de 512 MiB, sigue las indicaciones para instalar en <code>/dev/sda</code>. Guarda el estado de v86 antes de cerrar o recargar.</p>
-      <p class="guide-note">La imagen virt ocupa unos 49 MiB. Incluye controladores pensados para máquinas virtuales y usa virtio en v86. La descarga de paquetes al configurar Alpine depende de tu conexión y del mirror seleccionado.</p>
+      <p class="notice"><strong>Es una simulación completa, no una VM:</strong> los comandos, paquetes y servicios se ejecutan con JavaScript en esta misma página. No necesitas HTTPS, no hay descargas y el sistema arranca al instante.</p>
       <ol class="setup-list">
-        <li><strong>Alpine arranca solo</strong> al abrir la página. En la consola de inicio, escribe <code>root</code> para entrar. Ya puedes usar el sistema live; ejecuta <code>setup-alpine</code> si quieres instalarlo al disco.</li>
-        <li>En la configuración, elige <code>eth0</code> y una mirror Alpine cercana. La red pasa por un relay público; no uses contraseñas ni datos sensibles durante esa conexión.</li>
-        <li>La sesión live funciona en memoria. El instalador configura Alpine en el disco; ambas cosas se pierden al cerrar o recargar si no guardas el estado de v86.</li>
-        <li>Usa <strong>Guardar</strong> para exportar el estado completo de v86 (.bin) y <strong>Abrir</strong> para restaurarlo. El archivo puede ser muy grande.</li>
-        <li>En móvil, pulsa <strong>⌨ Teclado</strong> para escribir y usar teclas especiales en Alpine.</li>
+        <li>Escribe <code>help</code> para ver todos los comandos. Navega con <code>ls</code>, <code>cd</code> y <code>cat</code>; el sistema de archivos vive en <code>/root</code>, <code>/etc</code>, <code>/tmp</code>…</li>
+        <li>Instala paquetes simulados con <code>apk add cowsay</code>, <code>apk add neofetch</code> o <code>apk add figlet</code>: esos paquetes añaden comandos reales al sistema.</li>
+        <li>Gestiona servicios estilo OpenRC con <code>rc-status</code>, <code>rc-service sshd start</code> y <code>rc-update add sshd default</code>.</li>
+        <li>Encadena comandos con <code>|</code>, guarda salidas con <code>&gt;</code> o <code>&gt;&gt;</code> y lee archivos con <code>&lt;</code>.</li>
+        <li>Tu sistema se guarda solo en este navegador. Usa <strong>Guardar</strong> para descargarlo como JSON o <strong>Abrir</strong> para restaurarlo en otro dispositivo.</li>
       </ol>
       <div class="dialog-actions"><button class="secondary-button" type="button" data-close>Entendido</button></div>
     </section>
   </div>
 
+  <!-- ===== Diálogo: paquetes ===== -->
   <div class="modal-backdrop" id="apk-modal" role="presentation">
     <section class="dialog" role="dialog" aria-modal="true" aria-labelledby="apk-title">
       <div class="dialog-header">
-        <div><h1 id="apk-title">apk · paquetes Alpine</h1><p class="intro">Escribe estos comandos en la consola Alpine como root. Alpine usa apk en lugar de apt.</p></div>
+        <div><h1 id="apk-title">apk · paquetes simulados</h1><p class="intro">El gestor de paquetes estilo Alpine de este shell. Pulsa Copiar y pégalo en la terminal.</p></div>
         <button class="close-button" type="button" data-close aria-label="Cerrar"><svg viewBox="0 0 20 20" fill="none"><path d="m5 5 10 10M15 5 5 15" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button>
       </div>
       <div class="command-list">
         <div class="command-example"><code>apk update</code><button type="button" data-command="apk update">Copiar</button></div>
-        <div class="command-example"><code>apk upgrade</code><button type="button" data-command="apk upgrade">Copiar</button></div>
-        <div class="command-example"><code>apk add &lt;paquete&gt;</code><button type="button" data-command="apk add ">Copiar</button></div>
+        <div class="command-example"><code>apk search texto</code><button type="button" data-command="apk search ">Copiar</button></div>
+        <div class="command-example"><code>apk add cowsay</code><button type="button" data-command="apk add cowsay">Copiar</button></div>
+        <div class="command-example"><code>apk add neofetch</code><button type="button" data-command="apk add neofetch">Copiar</button></div>
+        <div class="command-example"><code>apk add figlet</code><button type="button" data-command="apk add figlet">Copiar</button></div>
         <div class="command-example"><code>apk info</code><button type="button" data-command="apk info">Copiar</button></div>
-        <div class="command-example"><code>apk search &lt;paquete&gt;</code><button type="button" data-command="apk search ">Copiar</button></div>
+        <div class="command-example"><code>apk del cowsay</code><button type="button" data-command="apk del cowsay">Copiar</button></div>
       </div>
-      <h2 class="guide-heading">Servicios de Alpine (OpenRC)</h2>
-      <p class="guide-note">Ejecuta los comandos en la consola Alpine como root. Alpine usa OpenRC, no systemd.</p>
+      <h2 class="guide-heading">Servicios (OpenRC simulado)</h2>
+      <p class="guide-note">Hay servicios de base (networking, crond) y otros que aparecen al instalar su paquete: <code>openssh-server</code>, <code>nginx</code> y <code>ntp</code>.</p>
       <div class="command-list">
         <div class="command-example"><code>rc-status</code><button type="button" data-command="rc-status">Copiar</button></div>
-        <div class="command-example"><code>rc-service &lt;servicio&gt; status</code><button type="button" data-command="rc-service &lt;servicio&gt; status">Copiar</button></div>
-        <div class="command-example"><code>rc-update add &lt;servicio&gt; default</code><button type="button" data-command="rc-update add &lt;servicio&gt; default">Copiar</button></div>
-        <div class="command-example"><code>rc-update del &lt;servicio&gt; default</code><button type="button" data-command="rc-update del &lt;servicio&gt; default">Copiar</button></div>
+        <div class="command-example"><code>rc-service sshd status</code><button type="button" data-command="rc-service sshd status">Copiar</button></div>
+        <div class="command-example"><code>rc-update add sshd default</code><button type="button" data-command="rc-update add sshd default">Copiar</button></div>
       </div>
-      <h2 class="guide-heading">Instalación al disco</h2>
-      <p class="guide-note">El asistente <code>setup-alpine</code> configura la instalación y el arranque. Para instalar manualmente el sistema en el disco:</p>
+      <h2 class="guide-heading">Instalación simulada</h2>
       <div class="command-list">
-        <div class="command-example"><code>setup-disk -m sys /dev/sda</code><button type="button" data-command="setup-disk -m sys /dev/sda">Copiar</button></div>
+        <div class="command-example"><code>setup-alpine</code><button type="button" data-command="setup-alpine">Copiar</button></div>
       </div>
       <div class="dialog-actions"><button class="secondary-button" type="button" data-close>Cerrar</button></div>
     </section>
   </div>
+
+  <!-- ===== Diálogo: guardar ===== -->
   <div class="modal-backdrop" id="save-modal" role="presentation">
     <section class="dialog" role="dialog" aria-modal="true" aria-labelledby="save-title">
       <div class="dialog-header">
-        <div><h1 id="save-title">Conservar el entorno</h1><p class="intro">Elige cómo guardar tus cambios. El almacenamiento local solo está disponible en este navegador.</p></div>
+        <div><h1 id="save-title">Conservar el sistema</h1><p class="intro">El sistema se guarda solo en este navegador. Descarga también una copia si quieres moverla a otro dispositivo.</p></div>
         <button class="close-button" type="button" data-close aria-label="Cerrar"><svg viewBox="0 0 20 20" fill="none"><path d="m5 5 10 10M15 5 5 15" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button>
       </div>
       <div class="command-list">
-        <button class="secondary-button" id="save-local-vm" type="button" hidden>Guardar VM en este navegador</button>
-        <button class="secondary-button" id="download-vm-state" type="button" hidden>Descargar archivo de VM (.bin)</button>
-        <button class="secondary-button" id="download-workspace" type="button">Descargar espacio de trabajo (.json)</button>
+        <button class="secondary-button" id="download-system" type="button">Descargar el sistema (.json)</button>
       </div>
-      <p class="guide-note">Los estados de VM pueden ocupar mucho espacio. Si el navegador no tiene cuota suficiente, usa la descarga del archivo .bin.</p>
+      <p class="guide-note">El archivo JSON incluye archivos, paquetes instalados, servicios y el historial de cada terminal. Es un respaldo pequeño: puedes editarlo a mano.</p>
       <div class="dialog-actions"><button class="secondary-button" type="button" data-close>Cerrar</button></div>
     </section>
   </div>
+
+  <!-- ===== Diálogo: restaurar ===== -->
   <div class="modal-backdrop" id="restore-modal" role="presentation">
     <section class="dialog" role="dialog" aria-modal="true" aria-labelledby="restore-title">
       <div class="dialog-header">
-        <div><h1 id="restore-title">Restaurar entorno</h1><p class="intro">Restaura la última copia de este navegador o abre un archivo de respaldo.</p></div>
+        <div><h1 id="restore-title">Restaurar sistema</h1><p class="intro">Abre un respaldo .json exportado desde este mismo sitio (también se aceptan respaldos antiguos de la versión 1).</p></div>
         <button class="close-button" type="button" data-close aria-label="Cerrar"><svg viewBox="0 0 20 20" fill="none"><path d="m5 5 10 10M15 5 5 15" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button>
       </div>
       <div class="command-list">
-        <button class="secondary-button" id="restore-local-vm" type="button" disabled>Restaurar VM de este navegador</button>
-        <button class="secondary-button" id="open-backup-file" type="button">Abrir archivo de respaldo (.bin o .json)</button>
+        <button class="secondary-button" id="open-backup-file" type="button">Abrir archivo de respaldo (.json)</button>
       </div>
-      <p class="guide-note">La copia local no se comparte entre navegadores ni dispositivos. Para moverla, descarga el archivo .bin y ábrelo desde el otro navegador.</p>
+      <p class="guide-note">La copia local no se comparte entre navegadores ni dispositivos; para moverla, descarga el JSON y ábrelo desde el otro navegador.</p>
       <div class="dialog-actions"><button class="secondary-button" type="button" data-close>Cerrar</button></div>
     </section>
   </div>
-  <input class="sr-only" id="restore-input" type="file" accept="application/json,.json,application/octet-stream,.bin" aria-label="Seleccionar archivo de espacio de trabajo o estado de v86">
+
+  <input class="sr-only" id="restore-input" type="file" accept="application/json,.json" aria-label="Seleccionar archivo de respaldo del sistema">
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <script src="./public/js/app.js" defer></script>

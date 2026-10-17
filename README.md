@@ -1,59 +1,62 @@
 # OpenWeb Linux
 
-**Prueba Alpine Linux en tu navegador.** OpenWeb Linux ejecuta una VM x86 ligera con [v86](https://github.com/copy/v86), ofrece un espacio de trabajo local con terminales y permite guardar respaldos sin crear una cuenta.
+**Un shell de Linux completo en tu navegador.** OpenWeb Linux es un sistema de terminal inspirado en Alpine Linux (busybox, apk y OpenRC simulados) que corre entero en JavaScript, con sistema de archivos persistente, paquetes, servicios, tuberías y respaldos sin crear una cuenta.
 
-**Try Alpine Linux in your browser.** OpenWeb Linux runs a lightweight x86 virtual machine with [v86](https://github.com/copy/v86), includes a local terminal workspace, and lets you save backups without creating an account.
+**A complete Linux shell in your browser.** OpenWeb Linux is an Alpine Linux-inspired terminal system (simulated busybox, apk and OpenRC) that runs entirely in JavaScript, with a persistent filesystem, packages, services, pipelines, and backups without an account.
 
 **[Abrir la demo en vivo](https://reaccionador2jeje.github.io/openweb-linux/) · [Ver el código fuente](https://github.com/Reaccionador2Jeje/openweb-linux)**
 
-> Proyecto experimental: el rendimiento y la compatibilidad dependen del navegador y del dispositivo. La consola del espacio de trabajo es una simulación para archivos locales, no un shell Linux; Alpine sí se ejecuta dentro de la VM.
+> Proyecto experimental. Es una simulación completa y honesta: no hay VM ni WebAssembly, los comandos se ejecutan con JavaScript en la propia página. Nada se envía a ningún servidor.
 
-## Qué incluye / What’s included
+## Qué incluye / What's included
 
-- Alpine Linux 3.24.2 x86 (32-bit) desde la ISO oficial `virt`
-- Emulador v86, SeaBIOS y VGA BIOS incluidos en el proyecto
-- VM configurada con 256 MiB de RAM y disco virtual de 512 MiB
-- Terminales de espacio de trabajo con archivos compartidos y comandos básicos de archivos
+- Shell tipo ash con comandos de archivos: `ls`, `cd`, `cat`, `head`, `tail`, `grep`, `wc`, `find`, `tree`, `touch`, `mkdir`, `rm`, `cp`, `mv`, `echo`…
+- Tuberías (`|`), redirección (`>`, `>>`) y lectura de archivos (`<`)
+- Sistema de archivos virtual con árbol tipo Alpine (`/etc`, `/root`, `/tmp`, `/var`…) que persiste en el navegador
+- Gestor de paquetes `apk` simulado con catálogo: instalar comandos reales (`cowsay`, `neofetch`, `figlet`…), `apk search`, `apk info`
+- Servicios estilo OpenRC: `rc-status`, `rc-service`, `rc-update` (algunos servicios aparecen al instalar su paquete)
+- Asistente `setup-alpine` con instalación simulada a disco, más `ps`, `top`, `free`, `df`, `dmesg`, `neofetch`
+- Varias sesiones de terminal (pestañas) que comparten el sistema, con historial y autocompletado con Tab
 - Teclado en pantalla para móviles
-- Guardado local en el navegador y exportación/importación de respaldos; sin inicio de sesión
-- Interfaz estática, alojada con GitHub Pages y servida por HTTPS
+- Guardado local automático y exportación/importación de respaldos JSON; sin inicio de sesión
+- Interfaz estática, alojada con GitHub Pages y servida por HTTPS (también funciona abriendo `index.html` por `file://`)
 
 ## Pruébalo / Quick start
 
 1. Visita la [demo de OpenWeb Linux](https://reaccionador2jeje.github.io/openweb-linux/) desde un navegador moderno.
-2. Alpine arranca automáticamente al abrir la página; escribe `root` en la consola cuando aparezca el inicio de sesión. Con **Pausar/Reanudar Alpine** vuelves al espacio web del navegador.
-3. Para instalar Alpine en el disco virtual, ejecuta `setup-alpine` y sigue las indicaciones. Elige `eth0` para la red y `/dev/sda` como disco; la instalación debe mantenerse pequeña para caber en 512 MiB.
-4. Usa **Guardar** para conservar el espacio de trabajo o exportar un estado de v86. Las copias locales solo existen en ese navegador.
-
-The live demo needs HTTPS because v86 uses WebAssembly. At the Alpine console, log in as `root`; run `setup-alpine` if you want to install the system on the 512 MiB virtual disk. Keep the installation minimal.
-
-## Espacio de trabajo y VM / Workspace and VM
-
-El espacio de trabajo del navegador ofrece comandos como `ls`, `cd`, `tree`, `find`, `cat`, `grep`, `touch`, `write`, `mkdir`, `cp`, `mv`, `rm`, `download` y `save`. Solo administran archivos guardados por la página; no ejecutan programas ni comandos Linux.
-
-La consola real de Alpine se ejecuta en una VM separada. Alpine usa `apk` para paquetes y OpenRC para servicios:
+2. El shell arranca al instante: escribe `help` para ver los comandos o `neofetch` para fichar el sistema.
+3. Instala paquetes simulados y pruébalos:
 
 ```sh
-apk update
-apk add <paquete>
-rc-status
+apk add cowsay
+cowsay hola desde OpenWeb Linux
+apk add figlet
+figlet openweb
+echo "hola" > /tmp/saludo.txt
+cat /tmp/saludo.txt | grep hola | wc -l
 ```
 
-El acceso de red de la VM usa el relay público `wss://relay.widgetry.org/`, operado por terceros. No introduzcas contraseñas ni información sensible mientras uses ese relay.
+4. Usa **Guardar** para descargar el sistema como JSON. Las copias locales solo existen en ese navegador.
+
+## Sistema de archivos y paquetes / Filesystem and packages
+
+El directorio inicial es `/root`; el sistema de archivos vive en el almacenamiento local del navegador y se restaura al volver a abrir la página. El paquete base (`alpine-base`, `busybox`) viene instalado; el resto del catálogo se consulta con `apk search` y `apk info`.
+
+Los servicios de base son `networking` y `crond`. Al instalar `openssh-server`, `nginx` o `ntp` aparecen sus servicios (`sshd`, `nginx`, `ntpd`), listos para `rc-service … start` y `rc-update add … default`.
 
 ## Guardar y restaurar / Save and restore
 
-No hay cuentas ni sincronización en la nube. El espacio de trabajo puede exportarse como JSON; el estado de la VM puede guardarse en almacenamiento local del navegador o descargarse como archivo `.bin`. Los estados de VM pueden ocupar mucho espacio y solo son portables mediante el archivo exportado. La cuota del navegador puede limitar el guardado local.
+No hay cuentas ni sincronización en la nube. El sistema se guarda solo en este navegador y puede exportarse como JSON (archivos, paquetes, servicios e historial de cada terminal). El archivo es un respaldo pequeño y editable a mano; la cuota del navegador puede limitar el guardado local.
 
 ## Ejecutarlo localmente / Run locally
 
-Sirve la raíz del repositorio con un servidor HTTP local y abre la dirección local en el navegador. v86 no funciona desde `file://`; fuera de `localhost`, el sitio debe servirse por HTTPS.
+Abre `index.html` directamente con doble clic (`file://`) o sirve la raíz del repositorio con cualquier servidor HTTP local. No hace falta build ni dependencias.
 
 La configuración de GitHub Pages está en `.github/workflows/pages.yml` y despliega al hacer push a `main`. En la configuración del repositorio, selecciona **GitHub Actions** como origen de Pages.
 
 ## Activos / Assets
 
-Los orígenes, licencias y hashes SHA-256 están en [public/ASSETS.md](./public/ASSETS.md). La ISO Alpine x86 virt se publica en el [mirror oficial de Alpine](https://dl-cdn.alpinelinux.org/alpine/latest-stable/releases/x86/alpine-virt-3.24.2-x86.iso).
+Los orígenes y licencias están en [public/ASSETS.md](./public/ASSETS.md).
 
 ---
 
