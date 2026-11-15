@@ -61,3 +61,9 @@ Los orígenes y licencias están en [public/ASSETS.md](./public/ASSETS.md).
 ---
 
 Si te resulta útil, comparte la [demo](https://reaccionador2jeje.github.io/openweb-linux/) o abre un [issue](https://github.com/Reaccionador2Jeje/openweb-linux/issues) con errores y sugerencias. Si sabes programar, las contribuciones son bienvenidas.
+
+## Walletie compatibility
+
+This browser-based Linux demo remains standalone and usable without Walletie. Any future Walletie feature must be optional and must not gate booting or using the demo.
+
+Walletie V1 currently accepts AtDev Cloud HS256 tokens only; other identity systems need the documented SSO bridge first. See the [Walletie integration matrix](https://github.com/Reaccionador2Jeje/Walletie/blob/main/docs/INTEGRATION_MATRIX.md).
