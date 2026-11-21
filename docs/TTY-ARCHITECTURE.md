@@ -38,3 +38,11 @@ Expose the backend only through HTTPS/WSS. Keep the Node process bound to loopba
 ## CloudForge integration
 
 The backend is deployable as a service on a Linux node. CloudForge can later provision and monitor the host, route the WSS endpoint, and mint short-lived workspace tickets. This branch currently uses a standalone shared access token; it must not be described as an already completed CloudForge integration.
+
+## Workspace operator API
+
+An operator API is available under /api/workspaces. It is protected by a separate OPENWEB_ADMIN_TOKEN, not the terminal access token. It supports listing managed workspaces, inspecting one workspace, starting/stopping a container, and deleting a workspace plus its persistent volume. The destructive delete operation must be called only from a trusted admin environment.
+
+Only containers carrying the OpenWeb management and workspace labels are returned by the manager. New workspaces receive both labels at creation. Existing pre-label workspaces are not automatically adopted.
+
+The health endpoint checks Docker daemon reachability. A missing or unavailable Docker daemon produces HTTP 503, making runtime failure distinguishable from a healthy terminal backend.
