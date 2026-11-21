@@ -113,7 +113,13 @@ wss.on('connection', (socket) => {
       cwd: process.cwd(),
       env: {
         PATH: process.env.PATH || '/usr/local/bin:/usr/bin:/bin',
-        HOME: process.env.HOME || '/',
+        HOME: '/root',
+        USER: 'root',
+        LOGNAME: 'root',
+        SHELL: runtime.shell,
+        PATH: '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin',
+        HISTFILE: '/dev/null',
+        TMPDIR: '/tmp',
         TERM: 'xterm-256color',
         LANG: 'C.UTF-8',
         NO_COLOR: '0'
