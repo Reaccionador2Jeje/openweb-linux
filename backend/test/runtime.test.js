@@ -23,8 +23,39 @@ test('runtime constructs a fixed NELRoot command, not user-provided shell text',
   const runtime = new NelRootRuntime({ binary: '/usr/bin/nelroot', image: 'ubuntu', shell: '/bin/bash' });
   assert.deepEqual(runtime.shellCommand(), {
     file: '/usr/bin/nelroot',
-    args: ['run-rootless', 'ubuntu', '--cwd', '/', '--', '/bin/bash', '--noprofile', '--norc', '-i']
+    args: [
+      'run-rootless', 'ubuntu',
+      '--cwd', '/',
+      '--memory', '512M',
+      '--cpu-time', '300',
+      '--max-files', '256',
+      '--max-file-size', '64M',
+      '--', '/bin/bash', '--noprofile', '--norc', '-i'
+    ]
   });
+});
+
+
+test('runtime accepts administrator-configured resource limits', () => {
+  const runtime = new NelRootRuntime({
+    memory: '1G',
+    cpuTime: '90',
+    maxFiles: '128',
+    maxFileSize: '32M'
+  });
+  assert.deepEqual(runtime.shellCommand().args.slice(4, 12), [
+    '--memory', '1G',
+    '--cpu-time', '90',
+    '--max-files', '128',
+    '--max-file-size', '32M'
+  ]);
+});
+
+test('runtime rejects invalid resource limit configuration', () => {
+  assert.throws(() => new NelRootRuntime({ memory: '512M;id' }));
+  assert.throws(() => new NelRootRuntime({ cpuTime: '0' }));
+  assert.throws(() => new NelRootRuntime({ maxFiles: '-1' }));
+  assert.throws(() => new NelRootRuntime({ maxFileSize: 'oops' }));
 });
 
 test('runtime rejects unsafe image and shell configuration', () => {
