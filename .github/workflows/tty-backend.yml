@@ -30,5 +30,8 @@ jobs:
       - name: Check backend JavaScript syntax
         working-directory: backend
         run: npm run check
+      - name: Run workspace manager tests
+        working-directory: backend
+        run: npm test
       - name: Build Ubuntu 24.04 workspace image
         run: docker build -t openweb-linux-ubuntu:24.04 ./backend/ubuntu
