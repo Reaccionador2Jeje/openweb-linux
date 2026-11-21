@@ -12,6 +12,7 @@ const execFileAsync = promisify(execFile);
 const HOST = process.env.HOST || "127.0.0.1";
 const PORT = Number(process.env.PORT || 8787);
 const ACCESS_TOKEN = process.env.OPENWEB_ACCESS_TOKEN || "";
+const ADMIN_TOKEN = process.env.OPENWEB_ADMIN_TOKEN || "";
 const ALLOWED_ORIGINS = new Set((process.env.OPENWEB_ALLOWED_ORIGINS || "")
   .split(",").map(value => value.trim()).filter(Boolean));
 const MAX_WORKSPACES = Number(process.env.OPENWEB_MAX_WORKSPACES || 20);
@@ -222,7 +223,8 @@ function isAdminRequest(req) {
   const prefix = "Bearer ";
   if (!header.startsWith(prefix)) return false;
   const candidate = Buffer.from(header.slice(prefix.length));
-  const expected = Buffer.from(ACCESS_TOKEN);
+  if (ADMIN_TOKEN.length < 32) return false;
+  const expected = Buffer.from(ADMIN_TOKEN);
   return candidate.length === expected.length && crypto.timingSafeEqual(candidate, expected);
 }
 
