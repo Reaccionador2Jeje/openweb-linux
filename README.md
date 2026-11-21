@@ -1,69 +1,103 @@
-# OpenWeb Linux
+# OpenWeb Linux — TTY
 
-**Un shell de Linux completo en tu navegador.** OpenWeb Linux es un sistema de terminal inspirado en Alpine Linux (busybox, apk y OpenRC simulados) que corre entero en JavaScript, con sistema de archivos persistente, paquetes, servicios, tuberías y respaldos sin crear una cuenta.
+**OpenWeb Linux is a fullscreen terminal interface for a real Ubuntu userspace, powered by NELRoot.** The browser renders xterm.js; a separate Node.js backend launches the interactive shell through NELRoot. This is not the old JavaScript shell simulation.
 
-**A complete Linux shell in your browser.** OpenWeb Linux is an Alpine Linux-inspired terminal system (simulated busybox, apk and OpenRC) that runs entirely in JavaScript, with a persistent filesystem, packages, services, pipelines, and backups without an account.
+[Open the GitHub Pages demo](https://reaccionador2jeje.github.io/openweb-linux/) · [Source code](https://github.com/Reaccionador2Jeje/openweb-linux) · [Backend setup](backend/README.md)
 
-**[Abrir la demo en vivo](https://reaccionador2jeje.github.io/openweb-linux/) · [Ver el código fuente](https://github.com/Reaccionador2Jeje/openweb-linux)**
+> **Status:** TTY frontend and NELRoot backend are present in the `nelroot-backend` development branch. The backend has not been deployed to a public Linux host. Until that host is configured and connected, the web page can render the TTY but cannot execute Ubuntu commands.
 
-> Proyecto experimental. Es una simulación completa y honesta: no hay VM ni WebAssembly, los comandos se ejecutan con JavaScript en la propia página. Nada se envía a ningún servidor.
+## TTY interface
 
-## Qué incluye / What's included
+- Fullscreen pure-black terminal; no desktop panels, tabs or simulated shell UI.
+- xterm.js with ANSI colors, cursor, scrollback and terminal resizing.
+- Access token requested in the terminal prompt and masked while typing.
+- WebSocket PTY connection to the NELRoot backend.
+- JSON messages for terminal input, output, resize, readiness and exit.
+- Backend URL configured in `public/js/config.js`; no permanent token is embedded in frontend source.
 
-- Shell tipo ash con comandos de archivos: `ls`, `cd`, `cat`, `head`, `tail`, `grep`, `wc`, `find`, `tree`, `touch`, `mkdir`, `rm`, `cp`, `mv`, `echo`…
-- Tuberías (`|`), redirección (`>`, `>>`) y lectura de archivos (`<`)
-- Sistema de archivos virtual con árbol tipo Alpine (`/etc`, `/root`, `/tmp`, `/var`…) que persiste en el navegador
-- Gestor de paquetes `apk` simulado con catálogo: instalar comandos reales (`cowsay`, `neofetch`, `figlet`…), `apk search`, `apk info`
-- Servicios estilo OpenRC: `rc-status`, `rc-service`, `rc-update` (algunos servicios aparecen al instalar su paquete)
-- Asistente `setup-alpine` con instalación simulada a disco, más `ps`, `top`, `free`, `df`, `dmesg`, `neofetch`
-- Varias sesiones de terminal (pestañas) que comparten el sistema, con historial y autocompletado con Tab
-- Teclado en pantalla para móviles
-- Guardado local automático y exportación/importación de respaldos JSON; sin inicio de sesión
-- Interfaz estática, alojada con GitHub Pages y servida por HTTPS (también funciona abriendo `index.html` por `file://`)
+## Architecture
 
-## Pruébalo / Quick start
-
-1. Visita la [demo de OpenWeb Linux](https://reaccionador2jeje.github.io/openweb-linux/) desde un navegador moderno.
-2. El shell arranca al instante: escribe `help` para ver los comandos o `neofetch` para fichar el sistema.
-3. Instala paquetes simulados y pruébalos:
-
-```sh
-apk add cowsay
-cowsay hola desde OpenWeb Linux
-apk add figlet
-figlet openweb
-echo "hola" > /tmp/saludo.txt
-cat /tmp/saludo.txt | grep hola | wc -l
+```text
+Browser / GitHub Pages
+  index.html + xterm.js
+        |
+        | WSS /terminal?token=...
+        v
+OpenWeb Linux Node.js backend
+  WebSocket + node-pty
+        |
+        | fixed NELRoot CLI arguments
+        v
+NELRoot rootless launcher
+        |
+        v
+Ubuntu root filesystem + host Linux kernel
 ```
 
-4. Usa **Guardar** para descargar el sistema como JSON. Las copias locales solo existen en ese navegador.
+GitHub Pages serves only static files. It cannot run the Linux backend. The backend needs a separate Linux host with NELRoot, a registered Ubuntu image, Node.js 22+, npm and the native build requirements for `node-pty`.
 
-## Sistema de archivos y paquetes / Filesystem and packages
+## Frontend setup
 
-El directorio inicial es `/root`; el sistema de archivos vive en el almacenamiento local del navegador y se restaura al volver a abrir la página. El paquete base (`alpine-base`, `busybox`) viene instalado; el resto del catálogo se consulta con `apk search` y `apk info`.
+Set the backend endpoint in `public/js/config.js`:
 
-Los servicios de base son `networking` y `crond`. Al instalar `openssh-server`, `nginx` o `ntp` aparecen sus servicios (`sshd`, `nginx`, `ntpd`), listos para `rc-service … start` y `rc-update add … default`.
+```js
+window.OPENWEB_TTY_CONFIG = Object.freeze({
+  backendUrl: "wss://tty-api.example.com/terminal"
+});
+```
 
-## Guardar y restaurar / Save and restore
+Do not put the access token in this file. Users enter the token into the terminal prompt. For local testing, a URL override is supported:
 
-No hay cuentas ni sincronización en la nube. El sistema se guarda solo en este navegador y puede exportarse como JSON (archivos, paquetes, servicios e historial de cada terminal). El archivo es un respaldo pequeño y editable a mano; la cuota del navegador puede limitar el guardado local.
+```text
+?backend=ws://127.0.0.1:8787/terminal
+```
 
-## Ejecutarlo localmente / Run locally
+An HTTPS frontend requires WSS; browsers block insecure WebSocket connections from HTTPS pages.
 
-Abre `index.html` directamente con doble clic (`file://`) o sirve la raíz del repositorio con cualquier servidor HTTP local. No hace falta build ni dependencias.
+## Backend setup
 
-La configuración de GitHub Pages está en `.github/workflows/pages.yml` y despliega al hacer push a `main`. En la configuración del repositorio, selecciona **GitHub Actions** como origen de Pages.
+Read [backend/README.md](backend/README.md) and [NELRoot integration notes](docs/NELROOT-BACKEND.md).
 
-## Activos / Assets
+Quick setup on the Linux host:
 
-Los orígenes y licencias están en [public/ASSETS.md](./public/ASSETS.md).
+```sh
+cd backend
+cp .env.example .env
+# Configure a unique random OPENWEB_ACCESS_TOKEN (at least 32 characters).
+npm install
+npm test
+npm run check
+npm start
+```
 
----
+The service binds to `127.0.0.1:8787` by default. Put it behind a TLS reverse proxy; do not expose the Node.js port directly to the public internet. NELRoot must be installed and available to the unprivileged service account, and the Ubuntu rootfs image must already be registered.
 
-Si te resulta útil, comparte la [demo](https://reaccionador2jeje.github.io/openweb-linux/) o abre un [issue](https://github.com/Reaccionador2Jeje/openweb-linux/issues) con errores y sugerencias. Si sabes programar, las contribuciones son bienvenidas.
+## Current NELRoot limitations
 
-## Walletie compatibility
+This is an integration milestone, not a production multi-tenant cloud workspace:
 
-This browser-based Linux demo remains standalone and usable without Walletie. Any future Walletie feature must be optional and must not gate booting or using the demo.
+- NELRoot currently uses the host Linux kernel and requires a same-architecture image.
+- The guest root filesystem is read-only except for temporary `/tmp`.
+- Persistent host workspace mounts are not implemented yet.
+- PID namespace supervision, guest `/proc` and `/dev`, resource quotas and isolated networking are not implemented yet.
+- Package installation with `apt`, persistent project files and long-running background services are not promised by this stage.
+- This is not a VM or an absolute security boundary.
 
-Walletie V1 currently accepts AtDev Cloud HS256 tokens only; other identity systems need the documented SSO bridge first. See the [Walletie integration matrix](https://github.com/Reaccionador2Jeje/Walletie/blob/main/docs/INTEGRATION_MATRIX.md).
+Do not use this backend for untrusted public workloads until the missing runtime controls and a security review are complete.
+
+## API
+
+- `GET /health` — backend liveness.
+- `GET /api/status` — authenticated NELRoot and image preflight.
+- `GET /terminal?token=...` — authenticated WebSocket PTY.
+
+The WebSocket client sends JSON `input` and `resize` messages. The server emits `ready`, `output`, `error` and `exit` messages. The query-token mechanism is for controlled testing; before public multi-user launch it should be replaced with a short-lived session exchange to reduce credential exposure in URLs and proxy logs.
+
+## Legacy browser simulator
+
+The previous JavaScript simulation files are retained in the repository as historical/reference code. The active `index.html` no longer loads that simulator; it loads only the TTY frontend.
+
+## GitHub Pages
+
+The existing workflow in `.github/workflows/pages.yml` publishes the static frontend from `main`. Merge the TTY frontend changes into `main` before expecting the public Pages site to change. The NELRoot backend must be deployed separately on a Linux host.
+
