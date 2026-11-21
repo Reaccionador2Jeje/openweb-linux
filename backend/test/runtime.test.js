@@ -3,7 +3,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { validateImageName, validateShellPath, NelRootRuntime } = require('../src/runtime');
-const { safeEqual, parseAllowedOrigins, originAllowed, validTerminalSize } = require('../src/security');
+const { safeEqual, parseAllowedOrigins, originAllowed, validTerminalSize, createTicketStore } = require('../src/security');
 
 test('image names accept simple registered identifiers', () => {
   assert.equal(validateImageName('ubuntu'), true);
@@ -72,7 +72,7 @@ test('bearer secret comparison handles mismatched values safely', () => {
 
 test('origin allowlist requires exact browser origin matches', () => {
   const origins = parseAllowedOrigins('https://example.test, https://app.example.test');
-  assert.equal(originAllowed('', origins), true);
+  assert.equal(originAllowed('', origins), false);
   assert.equal(originAllowed('https://example.test', origins), true);
   assert.equal(originAllowed('https://evil.test', origins), false);
 });
@@ -82,4 +82,45 @@ test('terminal dimensions are bounded', () => {
   assert.equal(validTerminalSize(1, 30), false);
   assert.equal(validTerminalSize(301, 30), false);
   assert.equal(validTerminalSize(100, 121), false);
+});
+
+
+test('temporary tickets are single-use and bound to their origin', () => {
+  const store = createTicketStore({ ttlMs: 30000 });
+  const ticket = store.issue('https://example.test');
+
+  assert.equal(typeof ticket, 'string');
+  assert.equal(ticket.length > 30, true);
+  assert.equal(store.consume(ticket, 'https://evil.test'), false);
+  assert.equal(store.consume(ticket, 'https://example.test'), false);
+});
+
+test('temporary tickets expire', () => {
+  let currentTime = 1000;
+  const store = createTicketStore({
+    ttlMs: 30000,
+    now: () => currentTime
+  });
+
+  const ticket = store.issue('https://example.test');
+
+  currentTime = 31001;
+
+  assert.equal(store.consume(ticket, 'https://example.test'), false);
+  assert.equal(store.size, 0);
+});
+
+test('temporary tickets cannot be issued without an origin', () => {
+  const store = createTicketStore();
+
+  assert.throws(() => store.issue(''));
+  assert.throws(() => store.issue(undefined));
+});
+
+test('a valid temporary ticket succeeds only once', () => {
+  const store = createTicketStore({ ttlMs: 30000 });
+  const ticket = store.issue('https://example.test');
+
+  assert.equal(store.consume(ticket, 'https://example.test'), true);
+  assert.equal(store.consume(ticket, 'https://example.test'), false);
 });

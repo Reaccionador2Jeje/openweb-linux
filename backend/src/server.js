@@ -7,7 +7,13 @@ const crypto = require('node:crypto');
 const pty = require('node-pty');
 const WebSocket = require('ws');
 const { NelRootRuntime } = require('./runtime');
-const { safeEqual, parseAllowedOrigins, originAllowed, validTerminalSize } = require('./security');
+const {
+  safeEqual,
+  parseAllowedOrigins,
+  originAllowed,
+  validTerminalSize,
+  createTicketStore
+} = require('./security');
 
 const HOST = process.env.HOST || '127.0.0.1';
 const PORT = Number.parseInt(process.env.PORT || '8787', 10);
@@ -16,22 +22,37 @@ const MAX_SESSIONS = Math.max(1, Math.min(20, Number.parseInt(process.env.OPENWE
 const IDLE_TIMEOUT_MS = Math.max(60_000, Number.parseInt(process.env.OPENWEB_IDLE_TIMEOUT_MS || '1800000', 10));
 const MAX_INPUT_BYTES = Math.max(1024, Math.min(65536, Number.parseInt(process.env.OPENWEB_MAX_INPUT_BYTES || '16384', 10)));
 const ALLOWED_ORIGINS = parseAllowedOrigins(process.env.OPENWEB_ALLOWED_ORIGINS || '');
+const TICKET_TTL_MS = 30_000;
+
 const runtime = new NelRootRuntime();
 const sessions = new Map();
+const ticketStore = createTicketStore({ ttlMs: TICKET_TTL_MS });
 
 if (!TOKEN || TOKEN.length < 32) {
   throw new Error('OPENWEB_ACCESS_TOKEN must be set to a random secret of at least 32 characters');
 }
-if (!Number.isInteger(PORT) || PORT < 1 || PORT > 65535) throw new Error('PORT is invalid');
+if (!Number.isInteger(PORT) || PORT < 1 || PORT > 65535) {
+  throw new Error('PORT is invalid');
+}
 
-function sendJson(response, status, payload) {
+function sendJson(response, status, payload, origin = '') {
   const body = JSON.stringify(payload);
-  response.writeHead(status, {
+  const headers = {
     'content-type': 'application/json; charset=utf-8',
     'content-length': Buffer.byteLength(body),
     'cache-control': 'no-store',
-    'x-content-type-options': 'nosniff'
-  });
+    'x-content-type-options': 'nosniff',
+    'referrer-policy': 'no-referrer'
+  };
+
+  if (origin && originAllowed(origin, ALLOWED_ORIGINS)) {
+    headers['access-control-allow-origin'] = origin;
+    headers['access-control-allow-headers'] = 'Authorization, Content-Type';
+    headers['access-control-allow-methods'] = 'POST, OPTIONS';
+    headers.vary = 'Origin';
+  }
+
+  response.writeHead(status, headers);
   response.end(body);
 }
 
@@ -44,9 +65,12 @@ function authorized(request) {
 function closeSession(id, reason = 'session closed') {
   const session = sessions.get(id);
   if (!session) return;
+
   sessions.delete(id);
   clearTimeout(session.idleTimer);
+
   try { session.terminal.kill(); } catch {}
+
   try {
     if (session.socket.readyState === WebSocket.OPEN) {
       session.socket.send(JSON.stringify({ type: 'exit', reason }));
@@ -58,55 +82,115 @@ function closeSession(id, reason = 'session closed') {
 function touchSession(id) {
   const session = sessions.get(id);
   if (!session) return;
+
   clearTimeout(session.idleTimer);
-  session.idleTimer = setTimeout(() => closeSession(id, 'idle timeout'), IDLE_TIMEOUT_MS);
+  session.idleTimer = setTimeout(
+    () => closeSession(id, 'idle timeout'),
+    IDLE_TIMEOUT_MS
+  );
   session.idleTimer.unref?.();
 }
 
 const server = http.createServer(async (request, response) => {
   const url = new URL(request.url, 'http://localhost');
+  const origin = request.headers.origin || '';
+
   if (request.method === 'GET' && url.pathname === '/health') {
-    return sendJson(response, 200, { service: 'openweb-linux-backend', status: 'ok' });
+    return sendJson(response, 200, {
+      service: 'openweb-linux-backend',
+      status: 'ok'
+    });
   }
+
+  if (url.pathname === '/api/session') {
+    if (!originAllowed(origin, ALLOWED_ORIGINS)) {
+      return sendJson(response, 403, { error: 'origin_not_allowed' });
+    }
+
+    if (request.method === 'OPTIONS') {
+      response.writeHead(204, {
+        'access-control-allow-origin': origin,
+        'access-control-allow-methods': 'POST, OPTIONS',
+        'access-control-allow-headers': 'Authorization, Content-Type',
+        'access-control-max-age': '300',
+        'vary': 'Origin',
+        'cache-control': 'no-store'
+      });
+      return response.end();
+    }
+
+    if (request.method !== 'POST') {
+      return sendJson(response, 405, { error: 'method_not_allowed' }, origin);
+    }
+
+    if (!authorized(request)) {
+      return sendJson(response, 401, { error: 'unauthorized' }, origin);
+    }
+
+    const ticket = ticketStore.issue(origin);
+
+    return sendJson(response, 200, {
+      ticket,
+      expires_in: TICKET_TTL_MS / 1000
+    }, origin);
+  }
+
   if (request.method === 'GET' && url.pathname === '/api/status') {
-    if (!authorized(request)) return sendJson(response, 401, { error: 'unauthorized' });
+    if (!authorized(request)) {
+      return sendJson(response, 401, { error: 'unauthorized' });
+    }
+
     const status = await runtime.inspect();
+
     return sendJson(response, status.ready ? 200 : 503, {
       ...status,
       active_sessions: sessions.size,
       max_sessions: MAX_SESSIONS
     });
   }
+
   return sendJson(response, 404, { error: 'not_found' });
 });
 
-const wss = new WebSocket.Server({ noServer: true, maxPayload: MAX_INPUT_BYTES + 1024 });
+const wss = new WebSocket.Server({
+  noServer: true,
+  maxPayload: MAX_INPUT_BYTES + 1024
+});
 
 server.on('upgrade', (request, socket, head) => {
   const url = new URL(request.url, 'http://localhost');
   const origin = request.headers.origin || '';
+
   if (url.pathname !== '/terminal' || !originAllowed(origin, ALLOWED_ORIGINS)) {
     socket.write('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n');
     socket.destroy();
     return;
   }
-  if (!safeEqual(url.searchParams.get('token') || '', TOKEN)) {
-    socket.write('HTTP/1.1 401 Unauthorized\r\nConnection: close\r\n\r\n');
-    socket.destroy();
-    return;
-  }
+
   if (sessions.size >= MAX_SESSIONS) {
     socket.write('HTTP/1.1 503 Service Unavailable\r\nConnection: close\r\n\r\n');
     socket.destroy();
     return;
   }
-  wss.handleUpgrade(request, socket, head, (ws) => wss.emit('connection', ws, request));
+
+  const ticket = url.searchParams.get('ticket') || '';
+
+  if (!ticketStore.consume(ticket, origin)) {
+    socket.write('HTTP/1.1 401 Unauthorized\r\nConnection: close\r\n\r\n');
+    socket.destroy();
+    return;
+  }
+
+  wss.handleUpgrade(request, socket, head, (ws) => {
+    wss.emit('connection', ws, request);
+  });
 });
 
 wss.on('connection', (socket) => {
   const id = crypto.randomUUID();
   const command = runtime.shellCommand();
   let terminal;
+
   try {
     terminal = pty.spawn(command.file, command.args, {
       name: 'xterm-256color',
@@ -119,7 +203,6 @@ wss.on('connection', (socket) => {
         USER: 'root',
         LOGNAME: 'root',
         SHELL: runtime.shell,
-        PATH: '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin',
         HISTFILE: '/dev/null',
         TMPDIR: '/tmp',
         TERM: 'xterm-256color',
@@ -129,7 +212,10 @@ wss.on('connection', (socket) => {
       encoding: 'utf8'
     });
   } catch (error) {
-    socket.send(JSON.stringify({ type: 'error', message: 'Could not start the NELRoot shell: ' + String(error.message).slice(0, 200) }));
+    socket.send(JSON.stringify({
+      type: 'error',
+      message: 'Could not start the NELRoot shell: ' + String(error.message).slice(0, 200)
+    }));
     socket.close(1011, 'runtime launch failed');
     return;
   }
@@ -137,17 +223,27 @@ wss.on('connection', (socket) => {
   const session = { id, socket, terminal, idleTimer: null };
   sessions.set(id, session);
   touchSession(id);
-  socket.send(JSON.stringify({ type: 'ready', session_id: id, runtime: 'NELRoot', image: runtime.image }));
+
+  socket.send(JSON.stringify({
+    type: 'ready',
+    session_id: id,
+    runtime: 'NELRoot',
+    image: runtime.image
+  }));
 
   terminal.onData((data) => {
-    if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ type: 'output', data }));
+    if (socket.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify({ type: 'output', data }));
+    }
     touchSession(id);
   });
+
   terminal.onExit(({ exitCode, signal }) => {
     if (sessions.has(id)) {
       sessions.delete(id);
       clearTimeout(session.idleTimer);
     }
+
     if (socket.readyState === WebSocket.OPEN) {
       socket.send(JSON.stringify({ type: 'exit', exit_code: exitCode, signal }));
       socket.close(1000, 'shell exited');
@@ -156,10 +252,17 @@ wss.on('connection', (socket) => {
 
   socket.on('message', (raw) => {
     touchSession(id);
+
     let message;
-    try { message = JSON.parse(raw.toString()); }
-    catch { socket.close(1003, 'invalid message'); return; }
+    try {
+      message = JSON.parse(raw.toString());
+    } catch {
+      socket.close(1003, 'invalid message');
+      return;
+    }
+
     if (!message || typeof message !== 'object') return;
+
     if (message.type === 'input') {
       if (typeof message.data !== 'string' || Buffer.byteLength(message.data) > MAX_INPUT_BYTES) {
         socket.close(1009, 'input too large');
@@ -173,18 +276,25 @@ wss.on('connection', (socket) => {
       socket.send(JSON.stringify({ type: 'pong' }));
     }
   });
+
   socket.on('close', () => closeSession(id, 'client disconnected'));
   socket.on('error', () => closeSession(id, 'websocket error'));
 });
 
 function shutdown() {
-  for (const id of [...sessions.keys()]) closeSession(id, 'backend shutting down');
+  for (const id of [...sessions.keys()]) {
+    closeSession(id, 'backend shutting down');
+  }
+
   server.close(() => process.exit(0));
   setTimeout(() => process.exit(1), 5000).unref();
 }
+
 process.on('SIGINT', shutdown);
 process.on('SIGTERM', shutdown);
 
 server.listen(PORT, HOST, () => {
-  process.stdout.write(`OpenWeb Linux NELRoot backend listening on http://${HOST}:${PORT}\n`);
+  process.stdout.write(
+    `OpenWeb Linux NELRoot backend listening on http://${HOST}:${PORT}\n`
+  );
 });

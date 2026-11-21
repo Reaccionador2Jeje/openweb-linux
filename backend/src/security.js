@@ -14,9 +14,9 @@ function parseAllowedOrigins(value = '') {
 }
 
 function originAllowed(origin, allowedOrigins) {
-  // Non-browser clients may omit Origin. Browser origins must match exactly.
-  if (!origin) return true;
-  return allowedOrigins.has(origin);
+  return typeof origin === 'string'
+    && origin.length > 0
+    && allowedOrigins.has(origin);
 }
 
 function validTerminalSize(cols, rows) {
@@ -24,4 +24,60 @@ function validTerminalSize(cols, rows) {
     && cols >= 20 && cols <= 300 && rows >= 5 && rows <= 120;
 }
 
-module.exports = { safeEqual, parseAllowedOrigins, originAllowed, validTerminalSize };
+function createTicketStore(options = {}) {
+  const ttlMs = options.ttlMs || 30_000;
+  const now = options.now || Date.now;
+  const tickets = new Map();
+
+  function prune() {
+    const time = now();
+    for (const [ticket, entry] of tickets) {
+      if (entry.expiresAt <= time) tickets.delete(ticket);
+    }
+  }
+
+  return {
+    issue(origin) {
+      if (typeof origin !== 'string' || !origin) {
+        throw new Error('A valid origin is required');
+      }
+
+      prune();
+
+      const ticket = crypto.randomBytes(32).toString('base64url');
+      tickets.set(ticket, {
+        origin,
+        expiresAt: now() + ttlMs
+      });
+
+      return ticket;
+    },
+
+    consume(ticket, origin) {
+      if (typeof ticket !== 'string' || !ticket) return false;
+
+      prune();
+
+      const entry = tickets.get(ticket);
+      if (!entry) return false;
+
+      // Consume before returning, even if the origin does not match.
+      tickets.delete(ticket);
+
+      return entry.origin === origin && entry.expiresAt > now();
+    },
+
+    get size() {
+      prune();
+      return tickets.size;
+    }
+  };
+}
+
+module.exports = {
+  safeEqual,
+  parseAllowedOrigins,
+  originAllowed,
+  validTerminalSize,
+  createTicketStore
+};
