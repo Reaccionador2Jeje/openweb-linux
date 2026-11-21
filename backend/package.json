@@ -1,0 +1,17 @@
+{
+  "name": "openweb-linux-nelroot-backend",
+  "version": "0.1.0",
+  "private": true,
+  "description": "WebSocket TTY backend powered by the NELRoot rootless Linux launcher",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "check": "node --check src/server.js && node --check src/runtime.js && node --check src/security.js",
+    "test": "node --test"
+  },
+  "engines": { "node": ">=22" },
+  "dependencies": {
+    "node-pty": "^1.1.0",
+    "ws": "^8.18.3"
+  }
+}
