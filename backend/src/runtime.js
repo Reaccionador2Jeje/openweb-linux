@@ -57,17 +57,14 @@ class NelRootRuntime {
 
     const imageAvailable = imageResult.status === 'fulfilled';
     const binaryAvailable = versionResult.status === 'fulfilled';
-    const rootlessImplemented = engine?.rootless_guest_execution?.implemented === true;
-
     return {
       provider: 'NELRoot',
       binary_available: binaryAvailable,
       version,
       engine_status_available: Boolean(engine),
-      rootless_launcher_reported: rootlessImplemented,
       image: this.image,
       image_available: imageAvailable,
-      ready: binaryAvailable && Boolean(engine) && imageAvailable && rootlessImplemented,
+      ready: binaryAvailable && Boolean(engine) && imageAvailable,
       limitations: [
         'NELRoot rootless execution currently uses the host kernel and requires a same-architecture Linux image.',
         'The guest root filesystem is read-only except for its temporary /tmp mount.',
