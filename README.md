@@ -4,7 +4,7 @@
 
 [Open the GitHub Pages demo](https://reaccionador2jeje.github.io/openweb-linux/) · [Source code](https://github.com/Reaccionador2Jeje/openweb-linux) · [Backend setup](backend/README.md)
 
-> **Status:** TTY frontend and NELRoot backend are present in the `nelroot-backend` development branch. The backend has not been deployed to a public Linux host. Until that host is configured and connected, the web page can render the TTY but cannot execute Ubuntu commands.
+> **Status:** TTY frontend and experimental NELRoot backend are integrated into `main`. GitHub Pages deployment is configured to run automatically on pushes to `main`. The backend has not been deployed to a Linux host yet, so the page can render the TTY but cannot execute Ubuntu commands until a host is configured and connected.
 
 ## TTY interface
 
@@ -99,5 +99,5 @@ The previous JavaScript simulation files are retained in the repository as histo
 
 ## GitHub Pages
 
-The existing workflow in `.github/workflows/pages.yml` publishes the static frontend from `main`. Merge the TTY frontend changes into `main` before expecting the public Pages site to change. The NELRoot backend must be deployed separately on a Linux host.
+The workflow in `.github/workflows/pages.yml` publishes the static frontend from `main` on every push. The TTY frontend is now integrated into `main`; check the GitHub Actions Pages deployment run for publication status. The NELRoot backend must be deployed separately on a Linux host.
 
