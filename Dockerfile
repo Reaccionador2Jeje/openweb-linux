@@ -2,7 +2,7 @@
 # Render currently runs this as an ordinary container, not a VM. NELRoot
 # namespace support must be verified on the selected host before enabling shells.
 
-FROM rust:1.86-bookworm AS nelroot-build
+FROM rust:1.89-bookworm AS nelroot-build
 ARG NELROOT_COMMIT=43e3a7f809a29fcc163c08f0a0dd1dfad5074694
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates git pkg-config     && rm -rf /var/lib/apt/lists/*
 RUN git clone https://github.com/Reaccionador2Jeje/NELRoot.git /src/nelroot \
@@ -15,6 +15,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates
 RUN debootstrap --arch=amd64 --variant=minbase --include=ca-certificates noble /opt/ubuntu-rootfs http://archive.ubuntu.com/ubuntu
 
 FROM node:22-bookworm AS node-deps
+RUN apt-get update && apt-get install -y --no-install-recommends python3 make g++ \
+    && rm -rf /var/lib/apt/lists/*
 WORKDIR /app/backend
 COPY backend/package.json backend/package-lock.json ./
 RUN npm ci --omit=dev
