@@ -1,69 +1,70 @@
-# OpenWeb Linux
+# OpenWeb Linux — TTY
 
-**Un shell de Linux completo en tu navegador.** OpenWeb Linux es un sistema de terminal inspirado en Alpine Linux (busybox, apk y OpenRC simulados) que corre entero en JavaScript, con sistema de archivos persistente, paquetes, servicios, tuberías y respaldos sin crear una cuenta.
+**OpenWeb Linux is being rewritten as a fullscreen web terminal connected to real Ubuntu 24.04 LTS.** The browser no longer simulates an operating system in JavaScript: it displays a TTY while the backend runs Bash inside isolated Ubuntu containers.
 
-**A complete Linux shell in your browser.** OpenWeb Linux is an Alpine Linux-inspired terminal system (simulated busybox, apk and OpenRC) that runs entirely in JavaScript, with a persistent filesystem, packages, services, pipelines, and backups without an account.
+> **Status of branch tty-rewrite:** the new TTY interface, WebSocket client, Node.js backend, Ubuntu image, and deployment configuration are included. Real commands require the backend to run on a Linux host with Docker. GitHub Pages hosts only the frontend.
 
-**[Abrir la demo en vivo](https://reaccionador2jeje.github.io/openweb-linux/) · [Ver el código fuente](https://github.com/Reaccionador2Jeje/openweb-linux)**
+## TTY experience
 
-> Proyecto experimental. Es una simulación completa y honesta: no hay VM ni WebAssembly, los comandos se ejecutan con JavaScript en la propia página. Nada se envía a ningún servidor.
+- Fullscreen pure black screen (#000), without bars, panels, buttons, tabs, or windows.
+- xterm.js terminal with keyboard input, history, and ANSI support.
+- Backend authentication from the prompt; the token is masked and not stored.
+- Interactive Bash session on Ubuntu 24.04 LTS.
+- Persistent workspace per browser using a random local identifier.
+- Reconnect to an existing workspace.
+- No fake shell or simulated command catalogue in the active frontend.
 
-## Qué incluye / What's included
+## Architecture
 
-- Shell tipo ash con comandos de archivos: `ls`, `cd`, `cat`, `head`, `tail`, `grep`, `wc`, `find`, `tree`, `touch`, `mkdir`, `rm`, `cp`, `mv`, `echo`…
-- Tuberías (`|`), redirección (`>`, `>>`) y lectura de archivos (`<`)
-- Sistema de archivos virtual con árbol tipo Alpine (`/etc`, `/root`, `/tmp`, `/var`…) que persiste en el navegador
-- Gestor de paquetes `apk` simulado con catálogo: instalar comandos reales (`cowsay`, `neofetch`, `figlet`…), `apk search`, `apk info`
-- Servicios estilo OpenRC: `rc-status`, `rc-service`, `rc-update` (algunos servicios aparecen al instalar su paquete)
-- Asistente `setup-alpine` con instalación simulada a disco, más `ps`, `top`, `free`, `df`, `dmesg`, `neofetch`
-- Varias sesiones de terminal (pestañas) que comparten el sistema, con historial y autocompletado con Tab
-- Teclado en pantalla para móviles
-- Guardado local automático y exportación/importación de respaldos JSON; sin inicio de sesión
-- Interfaz estática, alojada con GitHub Pages y servida por HTTPS (también funciona abriendo `index.html` por `file://`)
+Browser (GitHub Pages) → xterm.js → WebSocket → Node.js backend → node-pty → Docker → Ubuntu 24.04 container.
 
-## Pruébalo / Quick start
+CloudForge is the planned hosting and integration target. This branch includes a standalone backend that can be tested on a Docker host; it does not claim that CloudForge has already been deployed or connected.
 
-1. Visita la [demo de OpenWeb Linux](https://reaccionador2jeje.github.io/openweb-linux/) desde un navegador moderno.
-2. El shell arranca al instante: escribe `help` para ver los comandos o `neofetch` para fichar el sistema.
-3. Instala paquetes simulados y pruébalos:
+## Run the backend
 
-```sh
-apk add cowsay
-cowsay hola desde OpenWeb Linux
-apk add figlet
-figlet openweb
-echo "hola" > /tmp/saludo.txt
-cat /tmp/saludo.txt | grep hola | wc -l
-```
+Host requirements: Linux, Docker Engine, Node.js 20 or newer, and npm. A public deployment must expose the backend through HTTPS/WSS.
 
-4. Usa **Guardar** para descargar el sistema como JSON. Las copias locales solo existen en ese navegador.
+1. Build the Ubuntu image from the repository root:
 
-## Sistema de archivos y paquetes / Filesystem and packages
+   docker build -t openweb-linux-ubuntu:24.04 ./backend/ubuntu
 
-El directorio inicial es `/root`; el sistema de archivos vive en el almacenamiento local del navegador y se restaura al volver a abrir la página. El paquete base (`alpine-base`, `busybox`) viene instalado; el resto del catálogo se consulta con `apk search` y `apk info`.
+2. Install backend dependencies:
 
-Los servicios de base son `networking` y `crond`. Al instalar `openssh-server`, `nginx` o `ntp` aparecen sus servicios (`sshd`, `nginx`, `ntpd`), listos para `rc-service … start` y `rc-update add … default`.
+   cd backend && npm install
 
-## Guardar y restaurar / Save and restore
+3. Copy backend/.env.example to backend/.env. Set OPENWEB_ACCESS_TOKEN to a long random secret of at least 32 characters. Set OPENWEB_ALLOWED_ORIGINS to the exact frontend origin, for example https://reaccionador2jeje.github.io. Never commit the real token or place it in frontend JavaScript.
 
-No hay cuentas ni sincronización en la nube. El sistema se guarda solo en este navegador y puede exportarse como JSON (archivos, paquetes, servicios e historial de cada terminal). El archivo es un respaldo pequeño y editable a mano; la cuota del navegador puede limitar el guardado local.
+4. Start the service with the environment variables loaded:
 
-## Ejecutarlo localmente / Run locally
+   set -a
+   . ./.env
+   set +a
+   npm start
 
-Abre `index.html` directamente con doble clic (`file://`) o sirve la raíz del repositorio con cualquier servidor HTTP local. No hace falta build ni dependencias.
+   The health endpoint is /health and the terminal WebSocket endpoint is /terminal.
 
-La configuración de GitHub Pages está en `.github/workflows/pages.yml` y despliega al hacer push a `main`. En la configuración del repositorio, selecciona **GitHub Actions** como origen de Pages.
+5. Set backendUrl in public/js/config.js to the public WSS URL. For local development, a query override is supported, for example ?backend=ws://localhost:8787/terminal. HTTPS pages require WSS.
 
-## Activos / Assets
+## Ubuntu shell
 
-Los orígenes y licencias están en [public/ASSETS.md](./public/ASSETS.md).
+The workspace shell is Bash. The user inside the container is openweb, not root. Administrative package operations use sudo:
 
----
+    whoami
+    cat /etc/os-release
+    sudo apt update
+    sudo apt install -y tree
+    python3 --version
+    gcc --version
+    git --version
 
-Si te resulta útil, comparte la [demo](https://reaccionador2jeje.github.io/openweb-linux/) o abre un [issue](https://github.com/Reaccionador2Jeje/openweb-linux/issues) con errores y sugerencias. Si sabes programar, las contribuciones son bienvenidas.
+## Isolation and persistence
 
-## Walletie compatibility
+Each workspace has its own Docker container and persistent volume. Containers publish no ports, run without privileged mode, drop Linux capabilities, enable no-new-privileges, and have memory, CPU, and process limits. Workspace data remains in its volume after the container is stopped.
 
-This browser-based Linux demo remains standalone and usable without Walletie. Any future Walletie feature must be optional and must not gate booting or using the demo.
+This is container isolation, not a VM or an absolute security boundary. Run the backend on a dedicated, patched Linux host. The backend requires access to the Docker daemon, which is highly privileged; never mount the Docker socket inside user containers. Define storage quotas and a cleanup policy before a public multi-user launch.
 
-Walletie V1 currently accepts AtDev Cloud HS256 tokens only; other identity systems need the documented SSO bridge first. See the [Walletie integration matrix](https://github.com/Reaccionador2Jeje/Walletie/blob/main/docs/INTEGRATION_MATRIX.md).
+## Configuration and design
+
+See backend/.env.example and docs/TTY-ARCHITECTURE.md.
+
+The former JavaScript simulation remains in public/js/app.js as a historical reference, but index.html no longer loads it. The active interface is the TTY.
