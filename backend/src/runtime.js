@@ -22,6 +22,22 @@ class NelRootRuntime {
     this.image = options.image || process.env.NELROOT_IMAGE || 'ubuntu';
     this.shell = options.shell || process.env.NELROOT_SHELL || '/bin/bash';
     this.execTimeoutMs = options.execTimeoutMs || 8000;
+    this.memory = options.memory || process.env.NELROOT_MEMORY || '512M';
+    this.cpuTime = options.cpuTime || process.env.NELROOT_CPU_TIME || '300';
+    this.maxFiles = options.maxFiles || process.env.NELROOT_MAX_FILES || '256';
+    this.maxFileSize = options.maxFileSize || process.env.NELROOT_MAX_FILE_SIZE || '64M';
+
+    if (!/^[1-9][0-9]*(?:[KMG](?:I?B)?|B)?$/i.test(this.memory)) {
+      throw new Error('NELROOT_MEMORY must be a positive size such as 512M or 1G');
+    }
+    for (const [name, value] of [['NELROOT_CPU_TIME', this.cpuTime], ['NELROOT_MAX_FILES', this.maxFiles]]) {
+      if (!/^[1-9][0-9]*$/.test(String(value)) || !Number.isSafeInteger(Number(value))) {
+        throw new Error(name + ' must be a positive integer');
+      }
+    }
+    if (!/^[1-9][0-9]*(?:[KMG](?:I?B)?|B)?$/i.test(this.maxFileSize)) {
+      throw new Error('NELROOT_MAX_FILE_SIZE must be a positive size such as 64M or 1G');
+    }
 
     if (!validateImageName(this.image)) throw new Error('NELROOT_IMAGE has an invalid name');
     if (!validateShellPath(this.shell)) throw new Error('NELROOT_SHELL must be a safe absolute path');
@@ -68,7 +84,9 @@ class NelRootRuntime {
       limitations: [
         'NELRoot rootless execution currently uses the host kernel and requires a same-architecture Linux image.',
         'The guest root filesystem is read-only except for its temporary /tmp mount.',
-        'PID/network namespace supervision, guest /proc and /dev mounts, resource limits and persistent host workspace mounts are not yet provided by NELRoot.',
+        'Resource limits are applied per process; aggregate container-wide CPU and memory quotas are not yet provided.',
+        'The private /dev mount is minimal and does not yet provide standard device nodes.',
+        'Persistent host workspace mounts are not yet provided by NELRoot.',
         'This backend does not provide a VM or a complete security sandbox.'
       ],
       ...(engineError ? { engine_error: engineError } : {}),
@@ -84,6 +102,10 @@ class NelRootRuntime {
         'run-rootless',
         this.image,
         '--cwd', '/',
+        '--memory', String(this.memory),
+        '--cpu-time', String(this.cpuTime),
+        '--max-files', String(this.maxFiles),
+        '--max-file-size', String(this.maxFileSize),
         '--',
         this.shell,
         '--noprofile',
