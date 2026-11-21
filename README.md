@@ -67,3 +67,14 @@ Si te resulta útil, comparte la [demo](https://reaccionador2jeje.github.io/open
 This browser-based Linux demo remains standalone and usable without Walletie. Any future Walletie feature must be optional and must not gate booting or using the demo.
 
 Walletie V1 currently accepts AtDev Cloud HS256 tokens only; other identity systems need the documented SSO bridge first. See the [Walletie integration matrix](https://github.com/Reaccionador2Jeje/Walletie/blob/main/docs/INTEGRATION_MATRIX.md).
+
+
+## Experimental real TTY backend (NELRoot)
+
+The `nelroot-backend` development branch adds an experimental Node.js backend that launches a real interactive shell through the NELRoot CLI instead of emulating commands or requiring Docker.
+
+See:
+- [Backend setup and API](backend/README.md)
+- [NELRoot integration architecture and limitations](docs/NELROOT-BACKEND.md)
+
+This backend is a separate service and is **not deployed by GitHub Pages**. It requires a Linux host with NELRoot installed, a registered same-architecture Ubuntu rootfs, and the required user/mount namespace support. The current NELRoot runtime mounts the guest root filesystem read-only apart from temporary `/tmp`; persistent workspaces, package installation, PID supervision, isolated networking, guest `/proc` and `/dev`, and resource quotas are not available in this integration stage. Do not treat it as production multi-user hosting yet.
