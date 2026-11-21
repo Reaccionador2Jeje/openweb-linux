@@ -6,6 +6,7 @@ const { execFile } = require("node:child_process");
 const { promisify } = require("node:util");
 const pty = require("node-pty");
 const { WebSocketServer, WebSocket } = require("ws");
+const workspaceManager = require("./workspace-manager");
 
 const execFileAsync = promisify(execFile);
 const HOST = process.env.HOST || "127.0.0.1";
@@ -99,6 +100,8 @@ async function ensureWorkspace(id) {
     await docker([
       "run", "--detach",
       "--name", names.container,
+      "--label", "com.openweb-linux.managed=true",
+      "--label", "com.openweb-linux.workspace=" + id,
       "--hostname", "ubuntu",
       "--init",
       "--restart", "no",
@@ -205,23 +208,109 @@ async function authenticateAndStart(ws, firstMessage) {
   }
 }
 
-const server = http.createServer((req, res) => {
-  if (req.url === "/health") {
-    res.writeHead(200, {
-      "content-type": "application/json",
-      "cache-control": "no-store"
-    });
-    res.end(JSON.stringify({
-      status: "ok",
-      service: "openweb-linux-tty",
-      runtime: "ubuntu-24.04",
-      activeSessions: sessions.size
-    }));
+function sendJson(res, status, payload) {
+  res.writeHead(status, {
+    "content-type": "application/json; charset=utf-8",
+    "cache-control": "no-store",
+    "x-content-type-options": "nosniff"
+  });
+  res.end(JSON.stringify(payload));
+}
+
+function isAdminRequest(req) {
+  const header = req.headers.authorization || "";
+  const prefix = "Bearer ";
+  if (!header.startsWith(prefix)) return false;
+  const candidate = Buffer.from(header.slice(prefix.length));
+  const expected = Buffer.from(ACCESS_TOKEN);
+  return candidate.length === expected.length && crypto.timingSafeEqual(candidate, expected);
+}
+
+const server = http.createServer(async (req, res) => {
+  const origin = req.headers.origin;
+  if (origin && ALLOWED_ORIGINS.has(origin)) {
+    res.setHeader("access-control-allow-origin", origin);
+    res.setHeader("vary", "Origin");
+    res.setHeader("access-control-allow-headers", "authorization, content-type");
+    res.setHeader("access-control-allow-methods", "GET, POST, DELETE, OPTIONS");
+  }
+  if (req.method === "OPTIONS") {
+    res.writeHead(origin && ALLOWED_ORIGINS.has(origin) ? 204 : 403);
+    res.end();
     return;
   }
 
-  res.writeHead(404, { "content-type": "text/plain" });
-  res.end("Not found\n");
+  if (req.method === "GET" && req.url === "/health") {
+    let dockerReady = true;
+    try { await docker(["info", "--format", "{{.ServerVersion}}"], 5000); }
+    catch { dockerReady = false; }
+    sendJson(res, dockerReady ? 200 : 503, {
+      status: dockerReady ? "ready" : "degraded",
+      service: "openweb-linux-tty",
+      runtime: "ubuntu-24.04",
+      docker: dockerReady ? "available" : "unavailable",
+      activeSessions: sessions.size,
+      workspaceCapacity: MAX_WORKSPACES
+    });
+    return;
+  }
+
+  if (req.url.startsWith("/api/workspaces")) {
+    if (!isAdminRequest(req)) {
+      sendJson(res, 401, { error: "Administrator authentication required." });
+      return;
+    }
+    try {
+      if (req.method === "GET" && req.url === "/api/workspaces") {
+        const workspaces = await workspaceManager.listWorkspaces();
+        sendJson(res, 200, { workspaces, count: workspaces.length, limit: MAX_WORKSPACES });
+        return;
+      }
+
+      const match = req.url.match(/^\/api\/workspaces\/([a-f0-9-]{36})(?:\/(start|stop))?$/i);
+      if (!match) {
+        sendJson(res, 400, { error: "Invalid workspace management route." });
+        return;
+      }
+      const workspaceId = match[1];
+      const action = match[2] || "";
+
+      if (req.method === "GET" && !action) {
+        sendJson(res, 200, await workspaceManager.getWorkspace(workspaceId));
+        return;
+      }
+      if (req.method === "POST" && action === "start") {
+        sendJson(res, 200, await workspaceManager.startWorkspace(workspaceId));
+        return;
+      }
+      if (req.method === "POST" && action === "stop") {
+        if (activeWorkspaces.has(workspaceId)) {
+          sendJson(res, 409, { error: "Close the active terminal session before stopping this workspace." });
+          return;
+        }
+        sendJson(res, 200, await workspaceManager.stopWorkspace(workspaceId));
+        return;
+      }
+      if (req.method === "DELETE" && !action) {
+        if (activeWorkspaces.has(workspaceId)) {
+          sendJson(res, 409, { error: "Close the active terminal session before deleting this workspace." });
+          return;
+        }
+        const timer = idleTimers.get(workspaceId);
+        if (timer) clearTimeout(timer);
+        idleTimers.delete(workspaceId);
+        sendJson(res, 200, await workspaceManager.deleteWorkspace(workspaceId));
+        return;
+      }
+      sendJson(res, 405, { error: "Method not allowed." });
+    } catch (error) {
+      const missing = /no such object|not found/i.test(error.message || "");
+      sendJson(res, missing ? 404 : 500, { error: error.message || "Workspace operation failed." });
+    }
+    return;
+  }
+
+  sendJson(res, 404, { error: "Not found." });
 });
 
 const wss = new WebSocketServer({
