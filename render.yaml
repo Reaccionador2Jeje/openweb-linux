@@ -1,0 +1,37 @@
+services:
+  - type: web
+    name: openweb-linux-backend
+    runtime: docker
+    plan: free
+    region: oregon
+    branch: main
+    dockerfilePath: ./Dockerfile
+    autoDeploy: true
+    healthCheckPath: /health
+    envVars:
+      - key: OPENWEB_ACCESS_TOKEN
+        sync: false
+      - key: OPENWEB_ALLOWED_ORIGINS
+        value: https://reaccionador2jeje.github.io
+      - key: HOST
+        value: 0.0.0.0
+      - key: PORT
+        value: 10000
+      - key: NELROOT_IMAGE
+        value: ubuntu
+      - key: NELROOT_SHELL
+        value: /bin/bash
+      - key: OPENWEB_MAX_SESSIONS
+        value: 2
+      - key: OPENWEB_IDLE_TIMEOUT_MS
+        value: 1800000
+      - key: OPENWEB_MAX_INPUT_BYTES
+        value: 16384
+      - key: NELROOT_MEMORY
+        value: 512M
+      - key: NELROOT_CPU_TIME
+        value: 300
+      - key: NELROOT_MAX_FILES
+        value: 256
+      - key: NELROOT_MAX_FILE_SIZE
+        value: 64M
