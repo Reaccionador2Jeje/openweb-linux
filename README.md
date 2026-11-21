@@ -68,3 +68,19 @@ This is container isolation, not a VM or an absolute security boundary. Run the 
 See backend/.env.example and docs/TTY-ARCHITECTURE.md.
 
 The former JavaScript simulation remains in public/js/app.js as a historical reference, but index.html no longer loads it. The active interface is the TTY.
+
+## Workspace Manager API (administrator only)
+
+The backend exposes an authenticated management API for operators. It uses a credential separate from the terminal access token:
+
+- `GET /api/workspaces` — list OpenWeb-managed containers.
+- `GET /api/workspaces/:uuid` — inspect one workspace.
+- `POST /api/workspaces/:uuid/start` — start a stopped workspace.
+- `POST /api/workspaces/:uuid/stop` — stop an inactive workspace.
+- `DELETE /api/workspaces/:uuid` — delete the container and its persistent volume permanently.
+
+Set `OPENWEB_ADMIN_TOKEN` to a different random secret of at least 32 characters. Send it only from a trusted administrator environment as `Authorization: Bearer <admin-token>`. Do not put this token in the public terminal frontend. If the admin token is unset, management requests are denied. Deletion permanently removes the workspace home volume.
+
+Newly created containers carry OpenWeb ownership labels so the manager lists and operates only on containers created by this runtime. Workspaces created before the labels were introduced may need migration before they appear in the manager.
+
+The health endpoint checks Docker daemon availability and returns HTTP 503 when the runtime cannot reach Docker. Workspace manager unit tests validate UUID handling and deterministic resource naming without requiring Docker.
