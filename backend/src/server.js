@@ -1,5 +1,7 @@
 'use strict';
 
+require('dotenv').config();
+
 const http = require('node:http');
 const crypto = require('node:crypto');
 const pty = require('node-pty');
@@ -113,7 +115,7 @@ wss.on('connection', (socket) => {
       cwd: process.cwd(),
       env: {
         PATH: process.env.PATH || '/usr/local/bin:/usr/bin:/bin',
-        HOME: '/root',
+        HOME: process.env.HOME || '/home/atdev',
         USER: 'root',
         LOGNAME: 'root',
         SHELL: runtime.shell,
