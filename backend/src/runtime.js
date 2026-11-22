@@ -68,12 +68,13 @@ class NelRootRuntime {
       rootless_probe_available: rootlessAvailable,
       ready: binaryAvailable && Boolean(engine) && imageAvailable && rootlessAvailable,
       limitations: [
-        'NELRoot rootless execution currently uses the host kernel and requires a same-architecture Linux image.',
-        'The guest root filesystem is read-only except for its temporary /tmp mount.',
-        'NELRoot does not yet enforce CPU, memory, process-count or file-size quotas.',
-        'The private /dev mount is minimal and does not yet provide standard device nodes.',
-        'Persistent host workspace mounts are not yet provided by NELRoot.',
-        'This backend does not provide a VM or a complete security sandbox.'
+        'NELRoot uses the host Linux kernel and requires a same-architecture Linux image; it is not a virtual machine.',
+        'The guest root filesystem is read-only except for bounded temporary storage.',
+        'NELRoot applies address-space, CPU-time, open-file and file-size limits, but process-count and storage quotas are not implemented.',
+        'The guest has private user, mount, PID and network namespaces; its private /dev tmpfs does not yet provide the full standard device-node set.',
+        'Persistent host workspace mounts and host port publishing are not implemented.',
+        'The OpenWeb TTY currently exposes an interactive shell only; it does not yet expose NELRoot service-daemon lifecycle controls.',
+        'This backend is not a complete security boundary for untrusted multi-user workloads.'
       ],
       ...(engineError ? { engine_error: engineError } : {}),
       ...(imageAvailable ? {} : { image_error: String(imageResult.reason?.message || 'Image is not registered').slice(0, 300) }),
