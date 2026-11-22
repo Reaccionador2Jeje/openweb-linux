@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#000000">
   <meta name="color-scheme" content="dark">\n  <meta name="referrer" content="no-referrer">
-  <meta name="description" content="OpenWeb Linux TTY: terminal web conectada a un entorno Ubuntu mediante NELRoot.">
+  <meta name="description" content="OpenWeb Linux TTY: interfaz web para runtimes Linux locales y remotos.">
   <title>OpenWeb Linux — TTY</title>
   <link rel="stylesheet" href="./public/css/tty.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/css/xterm.css">
@@ -15,7 +15,7 @@
   <script defer src="./public/js/tty.js"></script>
 </head>
 <body>
-  <main id="tty" aria-label="OpenWeb Linux TTY"><a id="github-login" href="#" rel="nofollow">Sign in with GitHub</a><section id="local-login" hidden aria-label="Local device sign in"><label for="local-token">Local access token</label><input id="local-token" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Paste your device token"><button id="local-connect" type="button">Connect to this device</button><p>Token stays in this browser tab and is sent only to 127.0.0.1.</p></section><div id="terminal"></div></main>
+  <main id="tty" aria-label="OpenWeb Linux TTY"><section id="runtime-picker" aria-label="Choose runtime"><header><strong>OpenWeb Linux</strong><span>Choose where your terminal runs</span></header><button id="choose-local" type="button"><strong>PRoot · This Android device</strong><small>Connect to Ubuntu running locally in Termux</small></button><button id="choose-hosted" type="button"><strong>Remote host · Docker / NELRoot</strong><small>Connect to a separately configured Linux backend</small></button><p>PRoot runs locally and does not isolate commands from your device. Remote runtime availability depends on the backend host.</p></section><a id="github-login" href="#" rel="nofollow">Sign in with GitHub</a><section id="local-login" hidden aria-label="Local device sign in"><label for="local-token">Local access token</label><input id="local-token" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Paste your device token"><button id="local-connect" type="button">Connect to this device</button><p>Token stays in this browser tab and is sent only to 127.0.0.1.</p></section><div id="terminal" hidden></div></main>
   <noscript>OpenWeb Linux TTY necesita JavaScript habilitado.</noscript>
 </body>
 </html>
