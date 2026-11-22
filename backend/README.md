@@ -30,7 +30,7 @@ On backend startup, OpenWeb runs a bounded service-manager smoke test unless `OP
 - Linux host, same CPU architecture as the registered Ubuntu image.
 - NELRoot installed and available to the backend service account.
 - A registered Ubuntu rootfs image named by `NELROOT_IMAGE` (default: `ubuntu`).
-- User/mount namespace and mount operations permitted by host kernel and hosting policy.
+- User/mount namespace and mount operations permitted by host kernel and hosting policy. **Current Render deployment check:** `run-rootless` reaches the private mount-propagation step but receives `Permission denied (os error 13)` from `mount(MS_REC | MS_PRIVATE)`. On this Render service, the TTY therefore remains disabled. This is a host capability restriction, not a missing Ubuntu image or NELRoot executable; changing the guest image or falling back to `chroot` would not fix it.
 - Node.js 22 or newer, npm, and native build prerequisites for `node-pty`.
 
 Do not run this backend as host root. NELRoot's rootless launcher intentionally rejects host UID 0. Run it as an unprivileged service user.
