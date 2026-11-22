@@ -42,6 +42,8 @@ const runtime = new NelRootRuntime();
 const sessions = new Map();
 const ticketStore = createTicketStore({ ttlMs: TICKET_TTL_MS });
 let serviceManagerSmokeTest = { status: 'pending' };
+let serviceManagerSmokeTestPromise = Promise.resolve();
+let shuttingDown = false;
 
 if (!TOKEN || TOKEN.length < 32) {
   throw new Error('OPENWEB_ACCESS_TOKEN must be set to a random secret of at least 32 characters');
@@ -467,12 +469,25 @@ wss.on('connection', async (socket) => {
 });
 
 function shutdown() {
+  if (shuttingDown) return;
+  shuttingDown = true;
+
   for (const id of [...sessions.keys()]) {
     closeSession(id, 'backend shutting down');
   }
 
-  server.close(() => process.exit(0));
-  setTimeout(() => process.exit(1), 5000).unref();
+  server.close(async () => {
+    await runtime.stopServiceSmokeTest().catch(() => {});
+    await Promise.race([
+      serviceManagerSmokeTestPromise,
+      new Promise((resolve) => setTimeout(resolve, 7000))
+    ]);
+    process.exit(0);
+  });
+  setTimeout(async () => {
+    await runtime.stopServiceSmokeTest().catch(() => {});
+    process.exit(1);
+  }, 10000).unref();
 }
 
 process.on('SIGINT', shutdown);
@@ -489,7 +504,7 @@ server.listen(PORT, HOST, () => {
   }
 
   serviceManagerSmokeTest = { status: 'running' };
-  runtime.inspect()
+  serviceManagerSmokeTestPromise = runtime.inspect()
     .then((status) => {
       if (!status.ready) {
         return {
