@@ -19,43 +19,29 @@ test('shell path must be absolute and traversal-free', () => {
   assert.equal(validateShellPath('/bin/../etc/passwd'), false);
 });
 
-test('runtime constructs a fixed NELRoot command, not user-provided shell text', () => {
+test('runtime constructs the documented NELRoot rootless command', () => {
   const runtime = new NelRootRuntime({ binary: '/usr/bin/nelroot', image: 'ubuntu', shell: '/bin/bash' });
   assert.deepEqual(runtime.shellCommand(), {
     file: '/usr/bin/nelroot',
-    args: [
-      'run-rootless', 'ubuntu',
-      '--cwd', '/',
-      '--memory', '512M',
-      '--cpu-time', '300',
-      '--max-files', '256',
-      '--max-file-size', '64M',
-      '--', '/bin/bash', '--noprofile', '--norc', '-i'
-    ]
+    args: ['run-rootless', 'ubuntu', '--', '/bin/bash', '--noprofile', '--norc', '-i']
   });
 });
 
-
-test('runtime accepts administrator-configured resource limits', () => {
-  const runtime = new NelRootRuntime({
-    memory: '1G',
-    cpuTime: '90',
-    maxFiles: '128',
-    maxFileSize: '32M'
-  });
-  assert.deepEqual(runtime.shellCommand().args.slice(4, 12), [
-    '--memory', '1G',
-    '--cpu-time', '90',
-    '--max-files', '128',
-    '--max-file-size', '32M'
-  ]);
-});
-
-test('runtime rejects invalid resource limit configuration', () => {
-  assert.throws(() => new NelRootRuntime({ memory: '512M;id' }));
-  assert.throws(() => new NelRootRuntime({ cpuTime: '0' }));
-  assert.throws(() => new NelRootRuntime({ maxFiles: '-1' }));
-  assert.throws(() => new NelRootRuntime({ maxFileSize: 'oops' }));
+test('runtime preflight uses the documented rootless CLI syntax', async () => {
+  const runtime = new NelRootRuntime({ binary: '/usr/bin/nelroot', image: 'ubuntu' });
+  const calls = [];
+  runtime.command = async (args) => {
+    calls.push(args);
+    if (args[0] === '--version') return { stdout: 'NELRoot 0.1.0' };
+    if (args[0] === 'engine') return { stdout: JSON.stringify({ schema_version: 1 }) };
+    if (args[0] === 'image') return { stdout: '{}' };
+    if (args[0] === 'run-rootless') return { stdout: '' };
+    throw new Error('unexpected command');
+  };
+  const status = await runtime.inspect();
+  assert.equal(status.ready, true);
+  assert.equal(status.rootless_probe_available, true);
+  assert.deepEqual(calls.find(args => args[0] === 'run-rootless'), ['run-rootless', 'ubuntu', '--', '/bin/true']);
 });
 
 test('runtime rejects unsafe image and shell configuration', () => {
