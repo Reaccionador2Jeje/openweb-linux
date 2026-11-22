@@ -3,7 +3,7 @@
 This backend replaces the Docker execution path with the installed NELRoot CLI. It is a Linux-host service that creates a real interactive PTY by launching:
 
 ```sh
-nelroot run-rootless ubuntu --cwd / -- /bin/bash --noprofile --norc -i
+nelroot run-rootless ubuntu -- /bin/bash --noprofile --norc -i
 ```
 
 The image and shell are administrator configuration, never user input.
