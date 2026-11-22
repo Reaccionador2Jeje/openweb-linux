@@ -1,6 +1,25 @@
-# OpenWeb Linux backend — Docker runtime
+# OpenWeb Linux backend — Docker and local PRoot runtimes
 
-The default runtime is Docker. Each authenticated terminal session gets its own short-lived Ubuntu container, created through a separately managed Docker Engine. NELRoot remains available as an experimental alternative by setting `OPENWEB_RUNTIME=nelroot`.
+The default runtime is Docker. Each authenticated terminal session gets its own short-lived Ubuntu container, created through a separately managed Docker Engine. For development directly inside Termux + Ubuntu PRoot, select `OPENWEB_RUNTIME=proot`. NELRoot remains available as an experimental alternative with `OPENWEB_RUNTIME=nelroot`.
+
+## Local Android / Termux PRoot runtime
+
+PRoot mode runs the configured shell directly inside the Ubuntu PRoot environment already hosting the backend. It does not install Docker, create a VM, or create a separate container per terminal. It is intended for one trusted user developing locally on their own device.
+
+Select it with:
+
+```dotenv
+OPENWEB_RUNTIME=proot
+OPENWEB_PROOT_SHELL=/bin/bash
+OPENWEB_ACCESS_TOKEN=your-own-random-secret-of-at-least-32-characters
+OPENWEB_ENABLE_LOCAL_AUTH=true
+OPENWEB_ALLOWED_ORIGINS=https://reaccionador2jeje.github.io
+OPENWEB_MAX_SESSIONS=1
+```
+
+Start the backend from inside the Ubuntu PRoot shell. In this mode OpenWeb forcibly binds the HTTP/WebSocket server to `127.0.0.1`; it cannot be exposed to other devices through `HOST=0.0.0.0`. Open the frontend on the same Android device and use its local-device sign-in flow.
+
+**Security boundary:** commands run with the same effective access as the backend process and can read or modify files available to that PRoot user, including the backend's accessible files. PRoot is not a sandbox. Do not use this mode for public hosting, shared users, or untrusted code. Use a separate real isolation boundary for those workloads.
 
 ## Docker host requirement
 
