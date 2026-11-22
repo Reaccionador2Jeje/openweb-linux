@@ -114,7 +114,7 @@ class NelRootRuntime {
         'working_directory = "/"',
         'restart = "never"',
         ''
-      ].join('\\n'), { mode: 0o600 });
+      ].join('\n'), { mode: 0o600 });
 
       await run(['server', 'create', this.image, '--name', environment]);
       environmentCreated = true;
@@ -184,20 +184,6 @@ class NelRootRuntime {
   }
 
   shellCommand() {
-    // Only fixed, administrator-configured executable and image values reach the PTY.
-    return {
-      file: this.binary,
-      args: [
-        'run-rootless',
-        this.image,
-        '--',
-        this.shell,
-        '--noprofile',
-        '--norc',
-        '-i'
-      ]
-    };
-  }  shellCommand() {
     // Only fixed, administrator-configured executable and image values reach the PTY.
     return {
       file: this.binary,
