@@ -120,10 +120,10 @@
         case "error":
           showError(message.message || "The backend rejected this session.");
           if (typeof message.hint === "string" && message.hint) {
-            write("\x1b[33m[diagnostic] " + message.hint + "\x1b[0m\\r\\n");
+            write("\x1b[33m[diagnostic] " + message.hint + "\x1b[0m\r\n");
           }
           if (typeof message.code === "string" && message.code) {
-            write("\x1b[90mCode: " + message.code + "\x1b[0m\\r\\n");
+            write("\x1b[90mCode: " + message.code + "\x1b[0m\r\n");
           }
           if (socket.readyState === WebSocket.OPEN) socket.close();
           break;
