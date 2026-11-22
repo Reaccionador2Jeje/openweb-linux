@@ -507,10 +507,26 @@ server.listen(PORT, HOST, () => {
   serviceManagerSmokeTestPromise = runtime.inspect()
     .then((status) => {
       if (!status.ready) {
+        // Emit only bounded runtime diagnostics; never expose environment secrets.
+        const diagnostics = {
+          binary_available: status.binary_available,
+          version: status.version,
+          engine_status_available: status.engine_status_available,
+          image: status.image,
+          image_available: status.image_available,
+          rootless_probe_available: status.rootless_probe_available,
+          engine_error: status.engine_error,
+          image_error: status.image_error,
+          rootless_probe_error: status.rootless_probe_error
+        };
+        process.stderr.write(
+          'NELRoot preflight diagnostics: ' + JSON.stringify(diagnostics) + '\\n'
+        );
         return {
           ok: false,
           skipped: true,
-          reason: 'rootless runtime preflight is not ready'
+          reason: 'rootless runtime preflight is not ready',
+          diagnostics
         };
       }
       return runtime.serviceSmokeTest();
