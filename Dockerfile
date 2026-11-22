@@ -29,11 +29,7 @@ ENV NODE_ENV=production \
     OPENWEB_ROOTFS=/opt/nelroot/ubuntu \
     OPENWEB_MAX_SESSIONS=2 \
     OPENWEB_IDLE_TIMEOUT_MS=1800000 \
-    OPENWEB_MAX_INPUT_BYTES=16384 \
-    NELROOT_MEMORY=512M \
-    NELROOT_CPU_TIME=300 \
-    NELROOT_MAX_FILES=256 \
-    NELROOT_MAX_FILE_SIZE=64M
+    OPENWEB_MAX_INPUT_BYTES=16384
 
 RUN apt-get update && apt-get install -y --no-install-recommends libstdc++6 ca-certificates \
     && rm -rf /var/lib/apt/lists/* \
