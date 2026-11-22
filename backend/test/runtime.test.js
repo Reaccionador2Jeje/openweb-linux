@@ -2,7 +2,7 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { validateImageName, validateShellPath, validateDockerImage, DockerRuntime, NelRootRuntime } = require('../src/runtime');
+const { validateImageName, validateShellPath, validateDockerImage, DockerRuntime, NelRootRuntime, PRootRuntime } = require('../src/runtime');
 const { safeEqual, parseAllowedOrigins, originAllowed, validTerminalSize, createTicketStore } = require('../src/security');
 
 test('image names accept simple registered identifiers', () => {
@@ -47,6 +47,33 @@ test('runtime preflight uses the documented rootless CLI syntax', async () => {
 test('runtime rejects unsafe image and shell configuration', () => {
   assert.throws(() => new NelRootRuntime({ image: '../../host' }));
   assert.throws(() => new NelRootRuntime({ shell: '/bin/../../bin/sh' }));
+});
+
+
+
+test('PRoot runtime only enables a detected local PRoot shell', async () => {
+  const runtime = new PRootRuntime({
+    shell: '/bin/bash',
+    home: '/root',
+    release: '6.17.0-PRoot-Distro'
+  });
+  const status = await runtime.inspect();
+  assert.equal(status.provider, 'PRoot');
+  assert.equal(status.proot_detected, true);
+  assert.equal(status.local_only, true);
+  assert.equal(status.isolation, 'none');
+  assert.equal(status.ready, process.platform === 'linux');
+  assert.deepEqual(runtime.shellCommand(), {
+    file: '/bin/bash',
+    args: ['--noprofile', '--norc', '-i']
+  });
+});
+
+test('PRoot runtime refuses a non-PRoot environment', async () => {
+  const runtime = new PRootRuntime({ release: '6.17.0-generic' });
+  const status = await runtime.inspect();
+  assert.equal(status.proot_detected, false);
+  assert.equal(status.ready, false);
 });
 
 
