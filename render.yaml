@@ -11,6 +11,16 @@ services:
     envVars:
       - key: OPENWEB_ACCESS_TOKEN
         generateValue: true
+      - key: OPENWEB_GITHUB_CLIENT_ID
+        sync: false
+      - key: OPENWEB_GITHUB_CLIENT_SECRET
+        sync: false
+      - key: OPENWEB_BACKEND_PUBLIC_URL
+        value: https://openweb-linux-backend-p5lv.onrender.com
+      - key: OPENWEB_FRONTEND_URL
+        value: https://reaccionador2jeje.github.io/openweb-linux/
+      - key: OPENWEB_GITHUB_ALLOWED_USERS
+        value: Reaccionador2Jeje
       - key: OPENWEB_ALLOWED_ORIGINS
         value: https://reaccionador2jeje.github.io
       - key: HOST
