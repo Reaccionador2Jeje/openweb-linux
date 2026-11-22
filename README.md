@@ -4,7 +4,7 @@
 
 [Open the GitHub Pages demo](https://reaccionador2jeje.github.io/openweb-linux/) · [Source code](https://github.com/Reaccionador2Jeje/openweb-linux) · [Backend setup](backend/README.md) · [Android Local Mode](docs/ANDROID-LOCAL-MODE.md)
 
- > **Status:** The TTY frontend supports the Docker runtime. Access is restricted to GitHub usernames explicitly approved by the administrator. A separate Docker Engine must be configured; the Render container does not provide its host Docker socket.
+> **Status:** The TTY frontend supports the Docker runtime. Access is restricted to GitHub usernames explicitly approved by the administrator. A separate Docker Engine must be configured; the Render container does not provide its host Docker socket.
 
 ## TTY interface
 
@@ -90,7 +90,7 @@ Do not use this backend for untrusted public workloads until the missing runtime
 - `GET /health` — backend liveness.
 - `GET /auth/github` and `GET /auth/github/callback` — GitHub OAuth sign-in.
 - `POST /api/session` — one-time login-code exchange for a short-lived WebSocket ticket.
-- `GET /api/status` — administrator-token protected Docker Engine/image preflight and service-manager smoke-test result.
+- `GET /api/status` — administrator-token protected Docker Engine and configured image preflight.
 - `GET /terminal?ticket=...` — one-time ticket WebSocket PTY.
 
 The WebSocket client sends JSON `input` and `resize` messages. The server emits `ready`, `output`, `error` and `exit` messages. The permanent administrator token is never sent to the browser.
