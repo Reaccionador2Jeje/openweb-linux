@@ -21,6 +21,7 @@ function validateShellPath(shell) {
 
 class NelRootRuntime {
   constructor(options = {}) {
+    this.provider = 'NELRoot';
     this.binary = options.binary || process.env.NELROOT_BIN || 'nelroot';
     this.image = options.image || process.env.NELROOT_IMAGE || 'ubuntu';
     this.shell = options.shell || process.env.NELROOT_SHELL || '/bin/bash';
@@ -178,6 +179,8 @@ class NelRootRuntime {
     }
   }
 
+  async destroySession() {}
+
   async stopServiceSmokeTest() {
     const daemon = this.smokeTestDaemon;
     if (!daemon || !daemon.pid || daemon.exitCode !== null || daemon.signalCode !== null) {
@@ -223,6 +226,7 @@ function validateDockerImage(name) {
 
 class DockerRuntime {
   constructor(options = {}) {
+    this.provider = 'Docker';
     this.binary = options.binary || process.env.DOCKER_BIN || 'docker';
     this.image = options.image || process.env.OPENWEB_DOCKER_IMAGE || 'ubuntu:24.04';
     this.shell = options.shell || process.env.OPENWEB_DOCKER_SHELL || '/bin/bash';
