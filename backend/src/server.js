@@ -520,7 +520,7 @@ server.listen(PORT, HOST, () => {
           rootless_probe_error: status.rootless_probe_error
         };
         process.stderr.write(
-          'NELRoot preflight diagnostics: ' + JSON.stringify(diagnostics) + '\\n'
+          'NELRoot preflight diagnostics: ' + JSON.stringify(diagnostics) + '\n'
         );
         return {
           ok: false,
