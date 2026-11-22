@@ -75,12 +75,12 @@ The service binds to `127.0.0.1:8787` by default. Put it behind a TLS reverse pr
 
 This is an integration milestone, not a production multi-tenant cloud workspace:
 
-- NELRoot currently uses the host Linux kernel and requires a same-architecture image.
-- The guest root filesystem is read-only except for temporary `/tmp`.
-- Persistent host workspace mounts are not implemented yet.
-- PID namespace supervision, guest `/proc` and `/dev`, resource quotas and isolated networking are not implemented yet.
-- Package installation with `apt`, persistent project files and long-running background services are not promised by this stage.
-- This is not a VM or an absolute security boundary.
+- NELRoot uses the host Linux kernel and requires a same-architecture image; it is not a VM.
+- The guest root filesystem is read-only except for bounded temporary storage.
+- User, mount, PID and network namespaces, a host-side process supervisor, guest `/proc` and a private tmpfs `/dev` are implemented.
+- Address-space, CPU-time, open-file and file-size limits are applied; process-count and storage quotas remain pending.
+- Persistent host workspace mounts, complete signal forwarding, standard device nodes and host port publishing remain pending.
+- NELRoot's local service daemon and lifecycle CLI exist, but OpenWeb's web interface currently provides an interactive shell only; its backend runs a startup service-manager smoke test when the rootless preflight succeeds.
 
 Do not use this backend for untrusted public workloads until the missing runtime controls and a security review are complete.
 
@@ -89,7 +89,7 @@ Do not use this backend for untrusted public workloads until the missing runtime
 - `GET /health` — backend liveness.
 - `GET /auth/github` and `GET /auth/github/callback` — GitHub OAuth sign-in.
 - `POST /api/session` — one-time login-code exchange for a short-lived WebSocket ticket.
-- `GET /api/status` — administrator-token protected NELRoot and image preflight.
+- `GET /api/status` — administrator-token protected NELRoot/image preflight and service-manager smoke-test result.
 - `GET /terminal?ticket=...` — one-time ticket WebSocket PTY.
 
 The WebSocket client sends JSON `input` and `resize` messages. The server emits `ready`, `output`, `error` and `exit` messages. The permanent administrator token is never sent to the browser.
