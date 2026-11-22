@@ -41,6 +41,7 @@ const loginCodes = new Map();
 const runtime = new NelRootRuntime();
 const sessions = new Map();
 const ticketStore = createTicketStore({ ttlMs: TICKET_TTL_MS });
+let serviceManagerSmokeTest = { status: 'pending' };
 
 if (!TOKEN || TOKEN.length < 32) {
   throw new Error('OPENWEB_ACCESS_TOKEN must be set to a random secret of at least 32 characters');
@@ -310,7 +311,8 @@ const server = http.createServer(async (request, response) => {
     return sendJson(response, status.ready ? 200 : 503, {
       ...status,
       active_sessions: sessions.size,
-      max_sessions: MAX_SESSIONS
+      max_sessions: MAX_SESSIONS,
+      service_manager_smoke_test: serviceManagerSmokeTest
     });
   }
 
@@ -480,4 +482,38 @@ server.listen(PORT, HOST, () => {
   process.stdout.write(
     `OpenWeb Linux NELRoot backend listening on http://${HOST}:${PORT}\n`
   );
+
+  if (process.env.OPENWEB_NELROOT_SERVICE_SMOKE_TEST === 'false') {
+    serviceManagerSmokeTest = { status: 'disabled' };
+    return;
+  }
+
+  serviceManagerSmokeTest = { status: 'running' };
+  runtime.inspect()
+    .then((status) => {
+      if (!status.ready) {
+        return {
+          ok: false,
+          skipped: true,
+          reason: 'rootless runtime preflight is not ready'
+        };
+      }
+      return runtime.serviceSmokeTest();
+    })
+    .then((result) => {
+      serviceManagerSmokeTest = result;
+      process.stdout.write(
+        'NELRoot service manager smoke test: ' + JSON.stringify(result) + '\\n'
+      );
+    })
+    .catch((error) => {
+      serviceManagerSmokeTest = {
+        ok: false,
+        error: String(error?.message || error).slice(0, 300)
+      };
+      process.stderr.write(
+        'NELRoot service manager smoke test failed: ' +
+        serviceManagerSmokeTest.error + '\\n'
+      );
+    });
 });
