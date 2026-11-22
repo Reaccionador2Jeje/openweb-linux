@@ -129,7 +129,7 @@ class NelRootRuntime {
       let lastError = null;
       for (let attempt = 0; attempt < 50; attempt += 1) {
         if (daemonSpawnError) throw daemonSpawnError;
-        if (daemon.exitCode !== null) {
+        if (daemon.exitCode !== null || daemon.signalCode !== null) {
           throw new Error(`NELRoot service daemon exited early with code ${daemon.exitCode}`);
         }
         try {
@@ -165,7 +165,7 @@ class NelRootRuntime {
         stopped_state: stopped.state
       };
     } finally {
-      if (daemon && daemon.exitCode === null) {
+      if (daemon && daemon.pid && daemon.exitCode === null && daemon.signalCode === null) {
         await new Promise((resolve) => {
           const timeout = setTimeout(resolve, 3000);
           daemon.once('exit', () => {
@@ -174,7 +174,7 @@ class NelRootRuntime {
           });
           daemon.kill('SIGTERM');
         });
-        if (daemon.exitCode === null) daemon.kill('SIGKILL');
+        if (daemon.exitCode === null && daemon.signalCode === null) daemon.kill('SIGKILL');
       }
       if (environmentCreated) {
         try { await run(['server', 'remove', environment]); } catch {}
