@@ -1,6 +1,5 @@
-# OpenWeb Linux backend image: NELRoot + Ubuntu rootfs + Node.js TTY API.
-# Render currently runs this as an ordinary container, not a VM. NELRoot
-# namespace support must be verified on the selected host before enabling shells.
+# OpenWeb Linux backend image: Docker CLI + Node.js TTY API.
+# The Docker Engine is external; this image does not start a nested daemon.
 
 FROM rust:1.89-bookworm AS nelroot-build
 ARG NELROOT_COMMIT=f677402fd34ec4188335f662a0848aba5a80c27b
@@ -22,6 +21,9 @@ FROM node:22-bookworm-slim AS runtime
 ENV NODE_ENV=production \
     HOST=0.0.0.0 \
     PORT=10000 \
+    OPENWEB_RUNTIME=docker \
+    OPENWEB_DOCKER_IMAGE=ubuntu:24.04 \
+    OPENWEB_DOCKER_SHELL=/bin/bash \
     NELROOT_BIN=/usr/local/bin/nelroot \
     NELROOT_IMAGE=ubuntu \
     NELROOT_SHELL=/bin/bash \
@@ -32,6 +34,7 @@ ENV NODE_ENV=production \
     OPENWEB_MAX_INPUT_BYTES=16384
 
 RUN apt-get update && apt-get install -y --no-install-recommends libstdc++6 ca-certificates \
+    && apt-get install -y --no-install-recommends docker.io \
     && rm -rf /var/lib/apt/lists/* \
     && useradd --system --create-home --uid 10001 --shell /bin/bash openweb
 WORKDIR /app/backend
