@@ -95,7 +95,7 @@ test('Docker runtime builds a restricted per-session container command', async (
 test('Docker preflight requires both a reachable Engine and the configured image', async () => {
   const runtime = new DockerRuntime({ image: 'ubuntu:24.04' });
   runtime.command = async (args) => {
-    if (args[0] === 'info') return { stdout: 'Server Version: 27.5.1\\n' };
+    if (args[0] === 'info') return { stdout: 'Server Version: 27.5.1\n' };
     if (args[0] === 'image') return { stdout: '[{}]' };
     throw new Error('unexpected command');
   };
