@@ -2,7 +2,7 @@
 
 **OpenWeb Linux is a fullscreen terminal interface for a real Ubuntu userspace, powered by NELRoot.** The browser renders xterm.js; a separate Node.js backend launches the interactive shell through NELRoot. This is not the old JavaScript shell simulation.
 
-[Open the GitHub Pages demo](https://reaccionador2jeje.github.io/openweb-linux/) · [Source code](https://github.com/Reaccionador2Jeje/openweb-linux) · [Backend setup](backend/README.md)
+[Open the GitHub Pages demo](https://reaccionador2jeje.github.io/openweb-linux/) · [Source code](https://github.com/Reaccionador2Jeje/openweb-linux) · [Backend setup](backend/README.md) · [Android Local Mode](docs/ANDROID-LOCAL-MODE.md)
 
 > **Status:** The TTY frontend and experimental NELRoot backend are integrated. The browser now uses GitHub sign-in instead of asking users for the administrator token. Access is restricted to GitHub usernames explicitly approved by the administrator. The backend still requires a successful NELRoot host preflight before real shell use.
 
@@ -35,7 +35,7 @@ NELRoot rootless launcher
 Ubuntu root filesystem + host Linux kernel
 ```
 
-GitHub Pages serves only static files. It cannot run the Linux backend. The backend needs a separate Linux host with NELRoot, a registered Ubuntu image, Node.js 22+, npm and the native build requirements for `node-pty`.
+GitHub Pages serves only static files. It cannot run the Linux backend. For users with a compatible Linux host, use the native deployment guide. For same-device development, the experimental [Android Local Mode](docs/ANDROID-LOCAL-MODE.md) can connect GitHub Pages to a backend on `127.0.0.1`; Android may still block NELRoot namespaces/mounts or the `node-pty` build, so a successful device preflight is required. No VPS is required to develop the local mode.
 
 ## Frontend setup
 
@@ -57,7 +57,7 @@ Create a GitHub OAuth App and configure its callback URL as `https://YOUR-RENDER
 
 Read [backend/README.md](backend/README.md) and [NELRoot integration notes](docs/NELROOT-BACKEND.md).
 
-For a Linux host that supports NELRoot's required namespaces and mount operations, see the [native Linux deployment guide](deploy/native/README.md). The current Render container does not pass the rootless mount preflight.
+For a Linux host that supports NELRoot's required namespaces and mount operations, see the [native Linux deployment guide](deploy/native/README.md). For same-device Android testing, see [Android Local Mode](docs/ANDROID-LOCAL-MODE.md). The current Render container does not pass the rootless mount preflight.
 
 Quick setup on the Linux host:
 
