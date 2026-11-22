@@ -14,7 +14,6 @@ NELRoot's current rootless launcher uses the host Linux kernel and supports same
 
 The current NELRoot rootless contract has important limitations:
 - the imported guest root filesystem is mounted read-only, with bounded writable temporary storage;
-
 - persistent host workspace bind mounts are not available yet;
 - user, mount, PID and network namespaces are created with a host-side supervisor; graceful signal forwarding and complete PID-1 semantics remain incomplete;
 - guest `/proc` and a private tmpfs `/dev` are mounted, but the full standard device-node set is not yet provided;
@@ -25,7 +24,6 @@ The backend reports these limitations through `GET /api/status`. Before allowing
 
 On backend startup, OpenWeb runs a bounded service-manager smoke test unless `OPENWEB_NELROOT_SERVICE_SMOKE_TEST=false`: it creates a temporary server-environment definition, starts the local NELRoot service daemon, launches `/bin/sleep` as an isolated guest service, verifies `running`, stops it, and cleans up the test environment. The result is written to backend logs and included in the administrator-protected `GET /api/status` response. This checks process lifecycle only; the OpenWeb web UI still does not expose service-management controls or guest port publishing.
 
-On backend startup, OpenWeb also runs a bounded service-manager smoke test (unless `OPENWEB_NELROOT_SERVICE_SMOKE_TEST=false`): it creates a temporary server-environment definition, starts the local NELRoot service daemon, launches `/bin/sleep` as an isolated guest service, verifies `running`, stops it, and cleans up the test environment. The result is written to backend logs and included in the administrator-protected `GET /api/status` response. This checks process lifecycle only; the OpenWeb web UI still does not expose service-management controls or guest port publishing.
 
 ## Host requirements
 
