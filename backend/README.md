@@ -54,11 +54,30 @@ npm start
 
 By default it binds to `127.0.0.1:8787`. Put it behind a TLS reverse proxy and expose only the proxy. Do not bind it publicly without TLS and an explicit origin allowlist.
 
-## API
+## User sign-in and API
 
+Create a GitHub OAuth App with:
+- Homepage URL: the public GitHub Pages URL.
+- Authorization callback URL: `https://YOUR-RENDER-SERVICE.onrender.com/auth/github/callback`.
+
+Set these server-side variables in Render (never in frontend JavaScript):
+- `OPENWEB_GITHUB_CLIENT_ID`
+- `OPENWEB_GITHUB_CLIENT_SECRET`
+- `OPENWEB_BACKEND_PUBLIC_URL` — public HTTPS URL of this backend.
+- `OPENWEB_FRONTEND_URL` — public GitHub Pages URL, including the repository path and trailing slash.
+- `OPENWEB_GITHUB_ALLOWED_USERS` — comma-separated GitHub usernames approved to use the terminal. An empty list denies all sign-ins.
+
+The browser uses **Sign in with GitHub**. The backend verifies the GitHub identity, checks the allowlist, issues a one-time login code, and exchanges it for a 30-second WebSocket ticket. The permanent administrator token is never sent to the browser. The GitHub OAuth client secret remains in Render.
+
+API:
 - `GET /health` — liveness only; no secret required.
-- `GET /api/status` — authenticated NELRoot/image preflight.
-- `GET /terminal?token=...` — authenticated WebSocket PTY endpoint.
+- `GET /auth/github` — starts GitHub OAuth.
+- `GET /auth/github/callback` — verifies OAuth state and GitHub identity.
+- `POST /api/session` — exchanges a one-time login code for a short-lived WebSocket ticket.
+- `GET /api/status` — administrator-token protected NELRoot/image preflight.
+- `GET /terminal?ticket=...` — consumes a one-time ticket and opens the PTY.
+
+Only explicitly allowlisted GitHub accounts can sign in. Never add untrusted accounts while the runtime isolation review is incomplete.
 
 WebSocket messages are JSON:
 - client input: `{"type":"input","data":"ls\r"}`
@@ -68,7 +87,7 @@ WebSocket messages are JSON:
 - server output: `{"type":"output","data":"..."}`
 - server exit: `{"type":"exit","exit_code":0}`
 
-The access token is never returned by the API. For browser deployments, prefer a short-lived authenticated session exchange rather than embedding a permanent shared token in frontend JavaScript. The query-token mechanism is intended for controlled integration testing and should be replaced before public multi-user launch.
+The administrator access token is never returned by the API or sent to the browser. Browser users authenticate with GitHub and receive only a one-time login code and short-lived WebSocket ticket.
 
 ## Security boundaries
 
