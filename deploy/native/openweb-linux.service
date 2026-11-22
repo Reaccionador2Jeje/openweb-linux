@@ -1,0 +1,27 @@
+[Unit]
+Description=OpenWeb Linux backend (native NELRoot host)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=openweb
+Group=openweb
+WorkingDirectory=/opt/openweb-linux/backend
+EnvironmentFile=/etc/openweb-linux/openweb.env
+Environment=NODE_ENV=production
+Environment=HOST=127.0.0.1
+Environment=PORT=8787
+Environment=HOME=/home/openweb
+Environment=NELROOT_HOME=/home/openweb/.nelroot
+ExecStartPre=/opt/openweb-linux/deploy/native/preflight.sh
+ExecStart=/usr/bin/node /opt/openweb-linux/backend/src/server.js
+Restart=on-failure
+RestartSec=3
+KillSignal=SIGTERM
+TimeoutStopSec=15
+UMask=0077
+LimitNOFILE=4096
+
+[Install]
+WantedBy=multi-user.target
