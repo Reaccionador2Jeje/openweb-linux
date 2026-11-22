@@ -76,6 +76,7 @@ API:
 - `GET /auth/github` — starts GitHub OAuth.
 - `GET /auth/github/callback` — verifies OAuth state and GitHub identity.
 - `POST /api/session` — exchanges a one-time login code for a short-lived WebSocket ticket.
+- `POST /api/local-session` — optional same-device token exchange for Local Mode; disabled unless `OPENWEB_ENABLE_LOCAL_AUTH=true`, requires the exact allowed Origin and the backend bearer token.
 - `GET /api/status` — administrator-token protected NELRoot/image preflight.
 - `GET /terminal?ticket=...` — consumes a one-time ticket and opens the PTY.
 
@@ -102,3 +103,10 @@ The administrator access token is never returned by the API or sent to the brows
 - never expose this service without TLS and a reverse proxy.
 
 This is an integration milestone, not production multi-tenant hosting. Do not use it for untrusted public workloads until NELRoot has persistent per-session workspace mounts, complete signal/PID supervision, process and storage quotas, explicit network publishing policy and a stronger isolation review.
+
+
+## Same-device Local Mode
+
+For experimental Android/Termux development, see [Android Local Mode](../docs/ANDROID-LOCAL-MODE.md). Set `HOST=127.0.0.1`, `OPENWEB_ENABLE_LOCAL_AUTH=true`, and allow only the canonical GitHub Pages origin. Open the frontend with `?mode=local`; it connects to `ws://127.0.0.1:8787/terminal` and exchanges the device token for a short-lived ticket.
+
+The local access token is not embedded in frontend source or stored by the page. The backend must remain bound to loopback. Android compatibility is not guaranteed: `node-pty` may not build and Android policy may reject NELRoot namespaces or mount operations. A failed NELRoot preflight must keep the real terminal unavailable.
