@@ -26,6 +26,11 @@ The NELRoot rootless runtime launches a same-architecture program from a read-on
 
 OpenWeb Linux must not claim that `apt install`, persistent files, background services or arbitrary multi-user workloads are supported until the corresponding NELRoot capabilities exist and pass integration tests.
 
+## Startup service-manager smoke test
+
+The backend runs a bounded integration check after it begins listening (unless `OPENWEB_NELROOT_SERVICE_SMOKE_TEST=false`). If the rootless preflight succeeds, it creates a temporary server-environment definition, launches the local `nelroot service daemon`, registers a manifest for `/bin/sleep`, confirms the service reaches `running`, stops it, and removes the temporary environment. The result is logged and exposed in the administrator-protected `/api/status` response. This verifies the NELRoot service lifecycle on the actual OpenWeb host; it does not expose guest networking or add service controls to the browser TTY.
+
+
 ## Configuration
 
 See [backend/README.md](../backend/README.md) and [backend/.env.example](../backend/.env.example).
