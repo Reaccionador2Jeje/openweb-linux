@@ -4,13 +4,13 @@
 
 [Open the GitHub Pages demo](https://reaccionador2jeje.github.io/openweb-linux/) · [Source code](https://github.com/Reaccionador2Jeje/openweb-linux) · [Backend setup](backend/README.md)
 
-> **Status:** TTY frontend and experimental NELRoot backend are integrated into `main`. GitHub Pages deployment is configured to run automatically on pushes to `main`. The backend has not been deployed to a Linux host yet, so the page can render the TTY but cannot execute Ubuntu commands until a host is configured and connected.
+> **Status:** The TTY frontend and experimental NELRoot backend are integrated. The browser now uses GitHub sign-in instead of asking users for the administrator token. Access is restricted to GitHub usernames explicitly approved by the administrator. The backend still requires a successful NELRoot host preflight before real shell use.
 
 ## TTY interface
 
 - Fullscreen pure-black terminal; no desktop panels, tabs or simulated shell UI.
 - xterm.js with ANSI colors, cursor, scrollback and terminal resizing.
-- Access token requested in the terminal prompt and masked while typing.
+- GitHub sign-in; the administrator token stays on the backend.
 - WebSocket PTY connection to the NELRoot backend.
 - JSON messages for terminal input, output, resize, readiness and exit.
 - Backend URL configured in `public/js/config.js`; no permanent token is embedded in frontend source.
@@ -19,9 +19,10 @@
 
 ```text
 Browser / GitHub Pages
-  index.html + xterm.js
+  index.html + xterm.js + GitHub OAuth
         |
-        | WSS /terminal?token=...
+        | one-time login code -> short-lived ticket
+        | WSS /terminal?ticket=...
         v
 OpenWeb Linux Node.js backend
   WebSocket + node-pty
@@ -54,7 +55,9 @@ Do not put the access token in this file. Users enter the token into the termina
 
 An HTTPS frontend requires WSS; browsers block insecure WebSocket connections from HTTPS pages.
 
-## Backend setup
+## User authentication
+
+Create a GitHub OAuth App and configure its callback URL as `https://YOUR-RENDER-SERVICE.onrender.com/auth/github/callback`. Set the OAuth client ID and secret, the backend/frontend public URLs, and the comma-separated `OPENWEB_GITHUB_ALLOWED_USERS` allowlist in Render. The admin token is not a user credential and must never be placed in frontend files.
 
 Read [backend/README.md](backend/README.md) and [NELRoot integration notes](docs/NELROOT-BACKEND.md).
 
