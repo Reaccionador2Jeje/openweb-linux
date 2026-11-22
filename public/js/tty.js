@@ -3,33 +3,35 @@
 
   const CONFIG = window.OPENWEB_TTY_CONFIG || {};
   const root = document.getElementById("terminal");
+  const loginButton = document.getElementById("github-login");
 
   let terminal;
   let fitAddon;
   let socket;
   let state = "boot";
-  let tokenBuffer = "";
 
   function getBackendUrl() {
-    const override = new URLSearchParams(location.search).get("backend");
-    const value = override || CONFIG.backendUrl || "";
-
+    const value = CONFIG.backendUrl || "";
     if (!value) return null;
-
     try {
       const url = new URL(value, location.href);
-
       if (!["ws:", "wss:"].includes(url.protocol)) return null;
       if (location.protocol === "https:" && url.protocol !== "wss:") return null;
       if (url.pathname !== "/terminal") return null;
-
       url.search = "";
       url.hash = "";
-
       return url;
     } catch {
       return null;
     }
+  }
+
+  function getApiUrl(path) {
+    const backend = getBackendUrl();
+    if (!backend) return null;
+    const api = new URL(path, backend);
+    api.protocol = backend.protocol === "wss:" ? "https:" : "http:";
+    return api;
   }
 
   function write(value) {
@@ -39,57 +41,53 @@
   function showError(message) {
     state = "error";
     write("\r\n\x1b[31m[error] " + String(message) + "\x1b[0m\r\n");
-    write("Check the backend URL and NELRoot service, then reload.\r\n");
   }
 
-  async function connect(token) {
-    const backend = getBackendUrl();
+  async function exchangeLoginCode(code) {
+    const api = getApiUrl("/api/session");
+    if (!api) {
+      showError("The backend URL is missing or invalid.");
+      return;
+    }
 
+    state = "authenticating";
+    write("\r\nVerifying your GitHub account...\r\n");
+
+    try {
+      const response = await fetch(api.toString(), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code }),
+        cache: "no-store",
+        referrerPolicy: "no-referrer"
+      });
+      const result = await response.json();
+      if (!response.ok || typeof result.ticket !== "string") {
+        const reason = result.error === "not_allowlisted" || result.error === "user_not_allowed"
+          ? "Your GitHub account is not on the access list."
+          : result.error === "github_login_not_configured"
+            ? "GitHub login has not been configured by the administrator."
+            : "GitHub sign-in failed or the temporary code expired.";
+        throw new Error(reason);
+      }
+      if (loginButton) loginButton.hidden = true;
+      write("\x1b[32mSigned in as " + String(result.user || "GitHub user") + ".\x1b[0m\r\n");
+      connect(result.ticket);
+    } catch (error) {
+      showError(error.message || "Could not verify GitHub sign-in.");
+      if (loginButton) loginButton.hidden = false;
+    }
+  }
+
+  function connect(ticket) {
+    const backend = getBackendUrl();
     if (!backend) {
       showError("WebSocket backend URL is missing or invalid.");
       return;
     }
 
-    state = "authenticating";
-    write("\r\nRequesting a temporary access ticket...\r\n");
-
-    const api = new URL("/api/session", backend);
-    api.protocol = backend.protocol === "wss:" ? "https:" : "http:";
-
-    let ticket;
-
-    try {
-      const response = await fetch(api.toString(), {
-        method: "POST",
-        headers: {
-          "Authorization": "Bearer " + token,
-          "Content-Type": "application/json"
-        },
-        cache: "no-store",
-        referrerPolicy: "no-referrer"
-      });
-
-      const result = await response.json();
-
-      if (!response.ok || typeof result.ticket !== "string") {
-        throw new Error(
-          response.status === 401
-            ? "Access token rejected."
-            : response.status === 403
-              ? "This website origin is not authorized."
-              : "Could not obtain a temporary access ticket."
-        );
-      }
-
-      ticket = result.ticket;
-    } catch (error) {
-      showError(error.message || "Authentication request failed.");
-      return;
-    }
-
     const wsUrl = new URL(backend);
     wsUrl.searchParams.set("ticket", ticket);
-
     state = "connecting";
     write("Connecting to the NELRoot Ubuntu runtime...\r\n");
 
@@ -102,50 +100,32 @@
 
     socket.addEventListener("message", event => {
       if (typeof event.data !== "string") return;
-
       let message;
-      try {
-        message = JSON.parse(event.data);
-      } catch {
-        if (state === "ready") write(event.data);
-        return;
-      }
-
+      try { message = JSON.parse(event.data); }
+      catch { if (state === "ready") write(event.data); return; }
       if (!message || typeof message !== "object") return;
 
       switch (message.type) {
         case "ready":
           state = "ready";
           write("\r\n\x1b[32mConnected to NELRoot.\x1b[0m\r\n");
-          write(
-            "\x1b[90mRuntime: " + String(message.runtime || "Linux") +
-            " · Image: " + String(message.image || "Ubuntu") +
-            "\x1b[0m\r\n\r\n"
-          );
+          write("\x1b[90mRuntime: " + String(message.runtime || "Linux") +
+            " · Image: " + String(message.image || "Ubuntu") + "\x1b[0m\r\n\r\n");
           terminal.focus();
           sendResize();
           break;
-
         case "output":
-          if (state === "ready" && typeof message.data === "string") {
-            write(message.data);
-          }
+          if (state === "ready" && typeof message.data === "string") write(message.data);
           break;
-
         case "error":
           showError(message.message || "The backend rejected this session.");
           if (socket.readyState === WebSocket.OPEN) socket.close();
           break;
-
         case "exit":
           state = "disconnected";
-          write(
-            "\r\n\x1b[33m[session ended] " +
-            String(message.reason || "Shell exited") +
-            "\x1b[0m\r\n"
-          );
+          write("\r\n\x1b[33m[session ended] " +
+            String(message.reason || "Shell exited") + "\x1b[0m\r\n");
           break;
-
         default:
           break;
       }
@@ -154,10 +134,8 @@
     socket.addEventListener("close", event => {
       if (state === "ready" || state === "connecting") {
         state = "disconnected";
-        write(
-          "\r\n\x1b[33m[disconnected] WebSocket closed (" +
-          event.code + "). Reload to reconnect.\x1b[0m\r\n"
-        );
+        write("\r\n\x1b[33m[disconnected] WebSocket closed (" +
+          event.code + "). Reload to reconnect.\x1b[0m\r\n");
       }
     });
 
@@ -167,33 +145,6 @@
         write("\r\n\x1b[31m[network error] Could not reach the NELRoot backend.\x1b[0m\r\n");
       }
     });
-  }
-
-  function handleTokenInput(data) {
-    for (const char of data) {
-      if (char === "\r" || char === "\n") {
-        if (!tokenBuffer) {
-          write("\r\nAccess token: ");
-          continue;
-        }
-
-        const token = tokenBuffer;
-        tokenBuffer = "";
-        write("\r\n");
-        connect(token);
-        return;
-      }
-
-      if (char === "\u007f" || char === "\b") {
-        if (tokenBuffer.length) {
-          tokenBuffer = tokenBuffer.slice(0, -1);
-          write("\b \b");
-        }
-      } else if (char >= " " && char !== "\u007f") {
-        tokenBuffer += char;
-        write("*");
-      }
-    }
   }
 
   function sendResize() {
@@ -237,32 +188,56 @@
     terminal.open(root);
     fitAddon.fit();
 
-    write("\x1b[97mOpenWeb Linux TTY 2.1\x1b[0m\r\n");
+    write("\x1b[97mOpenWeb Linux TTY 2.2\x1b[0m\r\n");
     write("Rootless Ubuntu runtime · powered by NELRoot\r\n\r\n");
 
-    if (!getBackendUrl()) {
+    const backend = getBackendUrl();
+    if (!backend) {
       showError("No valid WSS backend URL configured.");
       return;
     }
 
-    state = "token";
-    write("Access token: ");
+    const params = new URLSearchParams(location.search);
+    const authCode = params.get("auth_code");
+    const authError = params.get("auth_error");
+    if (authCode || authError) {
+      history.replaceState({}, document.title, location.pathname + location.hash);
+    }
+
+    if (loginButton) {
+      const loginUrl = getApiUrl("/auth/github");
+      loginButton.href = loginUrl ? loginUrl.toString() : "#";
+      loginButton.hidden = Boolean(authCode);
+    }
+
+    if (authError) {
+      const messages = {
+        not_allowlisted: "Your GitHub account is not authorized for OpenWeb Linux.",
+        invalid_oauth_state: "The sign-in request expired or could not be verified. Try again.",
+        github_auth_failed: "GitHub sign-in could not be completed. Try again."
+      };
+      showError(messages[authError] || "GitHub sign-in failed.");
+      write("Use the Sign in with GitHub button to try again.\r\n");
+    } else if (authCode) {
+      if (loginButton) loginButton.hidden = true;
+      exchangeLoginCode(authCode);
+    } else {
+      state = "signed_out";
+      write("Sign in with GitHub to start a terminal session.\r\n");
+      write("Your account must be approved by the OpenWeb Linux administrator.\r\n");
+    }
 
     terminal.onData(data => {
-      if (state === "token") {
-        handleTokenInput(data);
-      } else if (state === "ready" && socket && socket.readyState === WebSocket.OPEN) {
+      if (state === "ready" && socket && socket.readyState === WebSocket.OPEN) {
         socket.send(JSON.stringify({ type: "input", data }));
       }
     });
-
     terminal.onResize(sendResize);
 
     window.addEventListener("resize", () => {
       fitAddon.fit();
       sendResize();
     }, { passive: true });
-
     document.addEventListener("visibilitychange", () => {
       if (!document.hidden) {
         fitAddon.fit();
