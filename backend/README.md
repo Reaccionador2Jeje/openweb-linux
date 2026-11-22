@@ -13,15 +13,17 @@ The image and shell are administrator configuration, never user input.
 NELRoot's current rootless launcher uses the host Linux kernel and supports same-architecture native programs. It is not a VM, a complete syscall emulator, or a complete security sandbox.
 
 The current NELRoot rootless contract has important limitations:
-- the imported guest root filesystem is mounted read-only;
-- only the launcher's bounded temporary `/tmp` is writable;
-- no persistent host workspace bind mount is available yet;
-- PID namespace supervision and signal forwarding are incomplete;
-- guest `/proc` and `/dev` mounts are not implemented;
-- networking is not isolated and resource limits are not yet enforced by NELRoot;
+- the imported guest root filesystem is mounted read-only, with bounded writable temporary storage;
+
+- persistent host workspace bind mounts are not available yet;
+- user, mount, PID and network namespaces are created with a host-side supervisor; graceful signal forwarding and complete PID-1 semantics remain incomplete;
+- guest `/proc` and a private tmpfs `/dev` are mounted, but the full standard device-node set is not yet provided;
+- address-space, CPU-time, open-file and file-size limits are applied; process-count and storage quotas are not implemented; guest networking is private and is not published to the host;
 - package installation with `apt` should not be advertised as working in this stage.
 
 The backend reports these limitations through `GET /api/status`. Before allowing a terminal session, it requires NELRoot, valid machine-readable engine status, the configured image, and a successful real `run-rootless <image> -- /bin/true` probe. This confirms the host can launch a basic process, but it does not turn NELRoot into a complete security sandbox.
+
+On backend startup, OpenWeb also runs a bounded service-manager smoke test (unless `OPENWEB_NELROOT_SERVICE_SMOKE_TEST=false`): it creates a temporary server-environment definition, starts the local NELRoot service daemon, launches `/bin/sleep` as an isolated guest service, verifies `running`, stops it, and cleans up the test environment. The result is written to backend logs and included in the administrator-protected `GET /api/status` response. This checks process lifecycle only; the OpenWeb web UI still does not expose service-management controls or guest port publishing.
 
 ## Host requirements
 
@@ -99,4 +101,4 @@ The administrator access token is never returned by the API or sent to the brows
 - backend binds to loopback by default;
 - never expose this service without TLS and a reverse proxy.
 
-This is an integration milestone, not production multi-tenant hosting. Do not use it for untrusted public workloads until NELRoot has writable per-session workspace mounts, PID supervision, resource controls, networking policy and a stronger isolation review.
+This is an integration milestone, not production multi-tenant hosting. Do not use it for untrusted public workloads until NELRoot has persistent per-session workspace mounts, complete signal/PID supervision, process and storage quotas, explicit network publishing policy and a stronger isolation review.
