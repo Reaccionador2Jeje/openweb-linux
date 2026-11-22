@@ -5,10 +5,12 @@ on:
     branches: [main]
     paths:
       - "backend/**"
+      - "deploy/native/**"
       - ".github/workflows/backend-ci.yml"
   pull_request:
     paths:
       - "backend/**"
+      - "deploy/native/**"
       - ".github/workflows/backend-ci.yml"
 
 permissions:
@@ -35,3 +37,5 @@ jobs:
       - name: Check JavaScript syntax
         working-directory: backend
         run: npm run check
+      - name: Check native deployment shell syntax
+        run: sh -n deploy/native/preflight.sh
