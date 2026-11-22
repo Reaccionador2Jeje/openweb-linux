@@ -9,10 +9,7 @@ RUN git clone https://github.com/Reaccionador2Jeje/NELRoot.git /src/nelroot \
     && git -C /src/nelroot checkout "${NELROOT_COMMIT}" \
     && cargo build --manifest-path /src/nelroot/Cargo.toml --locked --release
 
-FROM debian:bookworm-slim AS ubuntu-rootfs
-RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates debootstrap \
-    && rm -rf /var/lib/apt/lists/*
-RUN debootstrap --arch=amd64 --variant=minbase --include=ca-certificates noble /opt/ubuntu-rootfs http://archive.ubuntu.com/ubuntu
+FROM ubuntu:24.04 AS ubuntu-rootfs
 
 FROM node:22-bookworm AS node-deps
 RUN apt-get update && apt-get install -y --no-install-recommends python3 make g++ \
@@ -46,7 +43,7 @@ COPY --from=node-deps /app/backend/node_modules ./node_modules
 COPY backend/package.json ./
 COPY backend/src ./src
 COPY --from=nelroot-build /src/nelroot/target/release/nelroot /usr/local/bin/nelroot
-COPY --from=ubuntu-rootfs /opt/ubuntu-rootfs /opt/nelroot/ubuntu
+COPY --from=ubuntu-rootfs / /opt/nelroot/ubuntu/
 COPY docker/entrypoint.sh /usr/local/bin/openweb-entrypoint
 RUN chmod 0755 /usr/local/bin/nelroot /usr/local/bin/openweb-entrypoint \
     && mkdir -p /home/openweb/.nelroot \
