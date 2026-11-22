@@ -220,6 +220,64 @@ class NelRootRuntime {
 }
 
 
+class PRootRuntime {
+  constructor(options = {}) {
+    this.provider = 'PRoot';
+    this.shell = options.shell || process.env.OPENWEB_PROOT_SHELL || '/bin/bash';
+    this.home = options.home || process.env.HOME || '/root';
+    this.release = options.release || os.release();
+    if (!validateShellPath(this.shell)) throw new Error('OPENWEB_PROOT_SHELL must be a safe absolute path');
+  }
+
+  async inspect() {
+    const prootDetected = /proot/i.test(this.release) || Boolean(process.env.PROOT_VERSION);
+    let shellAvailable = false;
+    let shellError = null;
+    try {
+      await fs.access(this.shell, require('node:fs').constants.X_OK);
+      shellAvailable = true;
+    } catch (error) {
+      shellError = String(error?.message || 'Configured shell is unavailable').slice(0, 240);
+    }
+
+    return {
+      provider: 'PRoot',
+      environment: 'local',
+      proot_detected: prootDetected,
+      platform: process.platform,
+      architecture: process.arch,
+      shell: this.shell,
+      shell_available: shellAvailable,
+      ready: process.platform === 'linux' && prootDetected && shellAvailable,
+      local_only: true,
+      isolation: 'none',
+      limitations: [
+        'Commands run directly inside the existing PRoot environment; no container or VM is created.',
+        'The terminal has the same filesystem and user permissions as the OpenWeb backend process.',
+        'PRoot is not a security boundary. Only use this runtime for your own trusted local development.',
+        'The backend binds to 127.0.0.1 in PRoot mode and must not be exposed to a network.',
+        'Android kernel capabilities and cgroup restrictions still apply.'
+      ],
+      ...(!prootDetected ? { proot_error: 'The kernel release does not identify a PRoot environment.' } : {}),
+      ...(shellError ? { shell_error: shellError } : {})
+    };
+  }
+
+  shellCommand() {
+    return {
+      file: this.shell,
+      args: ['--noprofile', '--norc', '-i']
+    };
+  }
+
+  async destroySession() {}
+  async stopServiceSmokeTest() {}
+  async serviceSmokeTest() {
+    return { ok: true, skipped: true, reason: 'PRoot local runtime has no container service manager.' };
+  }
+}
+
+
 function validateDockerImage(name) {
   return typeof name === 'string'
     && /^[a-zA-Z0-9][a-zA-Z0-9._/:@-]{0,127}$/.test(name);
@@ -331,7 +389,8 @@ function createRuntime() {
   const provider = (process.env.OPENWEB_RUNTIME || 'docker').toLowerCase();
   if (provider === 'docker') return new DockerRuntime();
   if (provider === 'nelroot') return new NelRootRuntime();
-  throw new Error('OPENWEB_RUNTIME must be either docker or nelroot');
+  if (provider === 'proot') return new PRootRuntime();
+  throw new Error('OPENWEB_RUNTIME must be docker, nelroot or proot');
 }
 
-module.exports = { NelRootRuntime, DockerRuntime, createRuntime, validateImageName, validateShellPath, validateDockerImage };
+module.exports = { NelRootRuntime, DockerRuntime, PRootRuntime, createRuntime, validateImageName, validateShellPath, validateDockerImage };
