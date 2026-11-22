@@ -365,9 +365,20 @@ wss.on('connection', async (socket) => {
   }
   if (!preflight || !preflight.ready) {
     if (socket.readyState === WebSocket.OPEN) {
+      const rootlessError = String(preflight?.rootless_probe_error || '');
+      const mountPropagationDenied =
+        /make mount propagation private.*Permission denied|mount propagation.*Operation not permitted/i.test(rootlessError);
       socket.send(JSON.stringify({
         type: 'error',
-        message: 'NELRoot is not ready on this host. Interactive shell access is disabled.'
+        code: mountPropagationDenied
+          ? 'ROOTLESS_MOUNT_PROPAGATION_DENIED'
+          : 'ROOTLESS_PREFLIGHT_FAILED',
+        message: mountPropagationDenied
+          ? 'NELRoot no está disponible en este host: el sistema bloquea el montaje privado que necesita su aislamiento (EPERM). La terminal se mantiene deshabilitada por seguridad.'
+          : 'NELRoot no superó la comprobación de aislamiento en este host. La terminal se mantiene deshabilitada por seguridad.',
+        hint: mountPropagationDenied
+          ? 'OpenWeb necesita un host Linux que permita user namespaces y mount namespaces con operaciones de montaje. Este despliegue de Render no concede ese permiso.'
+          : 'Consulta el diagnóstico del backend en /api/status o en los logs del servicio.'
       }));
       socket.close(1013, 'runtime preflight failed');
     }
