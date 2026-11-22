@@ -24,6 +24,7 @@ const MAX_INPUT_BYTES = Math.max(1024, Math.min(65536, Number.parseInt(process.e
 const ALLOWED_ORIGINS = parseAllowedOrigins(process.env.OPENWEB_ALLOWED_ORIGINS || '');
 const TICKET_TTL_MS = 30_000;
 const GITHUB_CLIENT_ID = process.env.OPENWEB_GITHUB_CLIENT_ID || '';
+const LOCAL_AUTH_ENABLED = process.env.OPENWEB_ENABLE_LOCAL_AUTH === 'true';
 const GITHUB_CLIENT_SECRET = process.env.OPENWEB_GITHUB_CLIENT_SECRET || '';
 const BACKEND_PUBLIC_URL = (process.env.OPENWEB_BACKEND_PUBLIC_URL || '').replace(/\/$/, '');
 const FRONTEND_URL = process.env.OPENWEB_FRONTEND_URL || 'https://reaccionador2jeje.github.io/openweb-linux/';
@@ -300,6 +301,43 @@ const server = http.createServer(async (request, response) => {
       ticket,
       expires_in: TICKET_TTL_MS / 1000,
       user: login.login
+    }, origin);
+  }
+
+  if (url.pathname === '/api/local-session') {
+    if (!originAllowed(origin, ALLOWED_ORIGINS)) {
+      return sendJson(response, 403, { error: 'origin_not_allowed' });
+    }
+
+    if (request.method === 'OPTIONS') {
+      response.writeHead(204, {
+        'access-control-allow-origin': origin,
+        'access-control-allow-methods': 'POST, OPTIONS',
+        'access-control-allow-headers': 'Authorization',
+        'access-control-max-age': '300',
+        'vary': 'Origin',
+        'cache-control': 'no-store'
+      });
+      return response.end();
+    }
+
+    if (request.method !== 'POST') {
+      return sendJson(response, 405, { error: 'method_not_allowed' }, origin);
+    }
+
+    if (!LOCAL_AUTH_ENABLED) {
+      return sendJson(response, 403, { error: 'local_auth_disabled' }, origin);
+    }
+
+    if (!authorized(request)) {
+      return sendJson(response, 401, { error: 'unauthorized' }, origin);
+    }
+
+    const ticket = ticketStore.issue(origin);
+    return sendJson(response, 200, {
+      ticket,
+      expires_in: TICKET_TTL_MS / 1000,
+      user: 'local-device'
     }, origin);
   }
 
