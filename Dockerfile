@@ -3,7 +3,7 @@
 # namespace support must be verified on the selected host before enabling shells.
 
 FROM rust:1.89-bookworm AS nelroot-build
-ARG NELROOT_COMMIT=43e3a7f809a29fcc163c08f0a0dd1dfad5074694
+ARG NELROOT_COMMIT=f677402fd34ec4188335f662a0848aba5a80c27b
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates git pkg-config     && rm -rf /var/lib/apt/lists/*
 RUN git clone https://github.com/Reaccionador2Jeje/NELRoot.git /src/nelroot \
     && git -C /src/nelroot checkout "${NELROOT_COMMIT}" \
