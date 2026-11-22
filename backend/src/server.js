@@ -437,7 +437,7 @@ wss.on('connection', async (socket) => {
       name: 'xterm-256color',
       cols: 100,
       rows: 30,
-      cwd: process.cwd(),
+      cwd: runtime.provider === 'PRoot' ? runtime.home : process.cwd(),
       env: {
         PATH: process.env.PATH || '/usr/local/bin:/usr/bin:/bin',
         HOME: runtime.provider === 'Docker' ? '/tmp' : (process.env.HOME || '/home/openweb'),
