@@ -217,6 +217,7 @@ function closeSession(id, reason = 'session closed') {
   clearTimeout(session.idleTimer);
 
   try { session.terminal.kill(); } catch {}
+  Promise.resolve(runtime.destroySession(session.runtimeSession)).catch(() => {});
 
   try {
     if (session.socket.readyState === WebSocket.OPEN) {
@@ -394,28 +395,24 @@ server.on('upgrade', (request, socket, head) => {
 });
 
 wss.on('connection', async (socket) => {
-  // Never open an interactive shell unless the actual rootless runtime probe succeeds.
   let preflight;
   try {
     preflight = await runtime.inspect();
-  } catch {
-    preflight = null;
+  } catch (error) {
+    preflight = { ready: false, error: String(error?.message || error).slice(0, 240) };
   }
+
   if (!preflight || !preflight.ready) {
     if (socket.readyState === WebSocket.OPEN) {
-      const rootlessError = String(preflight?.rootless_probe_error || '');
-      const mountPropagationDenied =
-        /make mount propagation private.*Permission denied|mount propagation.*Operation not permitted/i.test(rootlessError);
+      const dockerRuntime = runtime.provider === 'Docker';
       socket.send(JSON.stringify({
         type: 'error',
-        code: mountPropagationDenied
-          ? 'ROOTLESS_MOUNT_PROPAGATION_DENIED'
-          : 'ROOTLESS_PREFLIGHT_FAILED',
-        message: mountPropagationDenied
-          ? 'NELRoot no está disponible en este host: el sistema bloquea el montaje privado que necesita su aislamiento (EPERM). La terminal se mantiene deshabilitada por seguridad.'
+        code: dockerRuntime ? 'DOCKER_ENGINE_UNAVAILABLE' : 'ROOTLESS_PREFLIGHT_FAILED',
+        message: dockerRuntime
+          ? 'OpenWeb no puede alcanzar el Docker Engine configurado o la imagen de sesión no está disponible.'
           : 'NELRoot no superó la comprobación de aislamiento en este host. La terminal se mantiene deshabilitada por seguridad.',
-        hint: mountPropagationDenied
-          ? 'OpenWeb necesita un host Linux que permita user namespaces y mount namespaces con operaciones de montaje. Este despliegue de Render no concede ese permiso.'
+        hint: dockerRuntime
+          ? 'Configura un Docker Engine dedicado y seguro mediante el socket local o un endpoint remoto protegido; comprueba que la imagen configurada exista.'
           : 'Consulta el diagnóstico del backend en /api/status o en los logs del servicio.'
       }));
       socket.close(1013, 'runtime preflight failed');
@@ -424,10 +421,17 @@ wss.on('connection', async (socket) => {
   }
 
   const id = crypto.randomUUID();
-  const command = runtime.shellCommand();
+  let runtimeSession = null;
   let terminal;
 
   try {
+    if (runtime.provider === 'Docker') {
+      runtimeSession = await runtime.createSession();
+    }
+    const command = runtime.provider === 'Docker'
+      ? runtime.shellCommand(runtimeSession)
+      : runtime.shellCommand();
+
     terminal = pty.spawn(command.file, command.args, {
       name: 'xterm-256color',
       cols: 100,
@@ -435,10 +439,10 @@ wss.on('connection', async (socket) => {
       cwd: process.cwd(),
       env: {
         PATH: process.env.PATH || '/usr/local/bin:/usr/bin:/bin',
-        HOME: process.env.HOME || '/home/atdev',
-        USER: 'root',
-        LOGNAME: 'root',
-        SHELL: runtime.shell,
+        HOME: runtime.provider === 'Docker' ? '/tmp' : (process.env.HOME || '/home/openweb'),
+        USER: runtime.provider === 'Docker' ? 'openweb' : 'root',
+        LOGNAME: runtime.provider === 'Docker' ? 'openweb' : 'root',
+        SHELL: runtime.shell || '/bin/bash',
         HISTFILE: '/dev/null',
         TMPDIR: '/tmp',
         TERM: 'xterm-256color',
@@ -448,22 +452,23 @@ wss.on('connection', async (socket) => {
       encoding: 'utf8'
     });
   } catch (error) {
+    if (runtimeSession) await runtime.destroySession(runtimeSession).catch(() => {});
     socket.send(JSON.stringify({
       type: 'error',
-      message: 'Could not start the NELRoot shell: ' + String(error.message).slice(0, 200)
+      message: 'Could not start the ' + runtime.provider + ' shell: ' + String(error.message).slice(0, 200)
     }));
     socket.close(1011, 'runtime launch failed');
     return;
   }
 
-  const session = { id, socket, terminal, idleTimer: null };
+  const session = { id, socket, terminal, runtimeSession, idleTimer: null };
   sessions.set(id, session);
   touchSession(id);
 
   socket.send(JSON.stringify({
     type: 'ready',
     session_id: id,
-    runtime: 'NELRoot',
+    runtime: runtime.provider,
     image: runtime.image
   }));
 
@@ -479,6 +484,7 @@ wss.on('connection', async (socket) => {
       sessions.delete(id);
       clearTimeout(session.idleTimer);
     }
+    Promise.resolve(runtime.destroySession(runtimeSession)).catch(() => {});
 
     if (socket.readyState === WebSocket.OPEN) {
       socket.send(JSON.stringify({ type: 'exit', exit_code: exitCode, signal }));
@@ -544,8 +550,26 @@ process.on('SIGTERM', shutdown);
 
 server.listen(PORT, HOST, () => {
   process.stdout.write(
-    `OpenWeb Linux NELRoot backend listening on http://${HOST}:${PORT}\n`
+    'OpenWeb Linux ' + runtime.provider + ' backend listening on http://' + HOST + ':' + PORT + '\n'
   );
+
+  if (runtime.provider === 'Docker') {
+    serviceManagerSmokeTest = { status: 'not_applicable', runtime: 'Docker' };
+    runtime.inspect().then((status) => {
+      process.stdout.write('Docker runtime preflight: ' + JSON.stringify({
+        ready: status.ready,
+        docker_available: status.docker_available,
+        docker_version: status.docker_version,
+        image: status.image,
+        image_available: status.image_available,
+        docker_error: status.docker_error,
+        image_error: status.image_error
+      }) + '\n');
+    }).catch((error) => {
+      process.stderr.write('Docker runtime preflight failed: ' + String(error?.message || error).slice(0, 240) + '\n');
+    });
+    return;
+  }
 
   if (process.env.OPENWEB_NELROOT_SERVICE_SMOKE_TEST === 'false') {
     serviceManagerSmokeTest = { status: 'disabled' };
@@ -556,7 +580,6 @@ server.listen(PORT, HOST, () => {
   serviceManagerSmokeTestPromise = runtime.inspect()
     .then((status) => {
       if (!status.ready) {
-        // Emit only bounded runtime diagnostics; never expose environment secrets.
         const diagnostics = {
           binary_available: status.binary_available,
           version: status.version,
@@ -568,32 +591,17 @@ server.listen(PORT, HOST, () => {
           image_error: status.image_error,
           rootless_probe_error: status.rootless_probe_error
         };
-        process.stderr.write(
-          'NELRoot preflight diagnostics: ' + JSON.stringify(diagnostics) + '\n'
-        );
-        return {
-          ok: false,
-          skipped: true,
-          reason: 'rootless runtime preflight is not ready',
-          diagnostics
-        };
+        process.stderr.write('NELRoot preflight diagnostics: ' + JSON.stringify(diagnostics) + '\n');
+        return { ok: false, skipped: true, reason: 'rootless runtime preflight is not ready', diagnostics };
       }
       return runtime.serviceSmokeTest();
     })
     .then((result) => {
       serviceManagerSmokeTest = result;
-      process.stdout.write(
-        'NELRoot service manager smoke test: ' + JSON.stringify(result) + '\n'
-      );
+      process.stdout.write('NELRoot service manager smoke test: ' + JSON.stringify(result) + '\n');
     })
     .catch((error) => {
-      serviceManagerSmokeTest = {
-        ok: false,
-        error: String(error?.message || error).slice(0, 300)
-      };
-      process.stderr.write(
-        'NELRoot service manager smoke test failed: ' +
-        serviceManagerSmokeTest.error + '\n'
-      );
+      serviceManagerSmokeTest = { ok: false, error: String(error?.message || error).slice(0, 300) };
+      process.stderr.write('NELRoot service manager smoke test failed: ' + serviceManagerSmokeTest.error + '\n');
     });
 });
