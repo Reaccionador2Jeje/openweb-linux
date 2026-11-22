@@ -19,5 +19,5 @@ if ! nelroot image inspect "$NELROOT_IMAGE" >/dev/null 2>&1; then
   nelroot image register "$NELROOT_IMAGE" "$OPENWEB_ROOTFS" --architecture x86_64
 fi
 
-echo "OpenWeb Linux backend starting; NELRoot shell capability still requires host preflight."
+echo "OpenWeb Linux backend starting; rootless runtime preflight is enforced before terminal sessions."
 exec node src/server.js
