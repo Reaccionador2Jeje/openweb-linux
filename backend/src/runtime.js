@@ -1,7 +1,10 @@
 'use strict';
 
-const { execFile } = require('node:child_process');
+const { execFile, spawn } = require('node:child_process');
 const { promisify } = require('node:util');
+const fs = require('node:fs/promises');
+const os = require('node:os');
+const path = require('node:path');
 
 const execFileAsync = promisify(execFile);
 
@@ -82,7 +85,119 @@ class NelRootRuntime {
     };
   }
 
+  async serviceSmokeTest() {
+    const environment = `openweb-smoke-${process.pid}-${Date.now()}`;
+    const service = 'sleep-probe';
+    const tempDirectory = await fs.mkdtemp(path.join(os.tmpdir(), 'nelroot-openweb-'));
+    const manifestPath = path.join(tempDirectory, 'service.toml');
+    let environmentCreated = false;
+    let daemon = null;
+    let daemonSpawnError = null;
+
+    const run = (args) => this.command(args);
+    const parseStatus = (result) => {
+      const payload = JSON.parse(result.stdout);
+      if (payload.result !== 'status' || !payload.data) {
+        throw new Error('NELRoot returned an unexpected service status response');
+      }
+      return payload.data;
+    };
+
+    try {
+      await fs.writeFile(manifestPath, [
+        'schema_version = 1',
+        '',
+        '[[services]]',
+        `name = "${service}"`,
+        'command = "/bin/sleep"',
+        'args = ["30"]',
+        'working_directory = "/"',
+        'restart = "never"',
+        ''
+      ].join('\\n'), { mode: 0o600 });
+
+      await run(['server', 'create', this.image, '--name', environment]);
+      environmentCreated = true;
+
+      daemon = spawn(this.binary, ['service', 'daemon'], {
+        stdio: 'ignore',
+        env: { ...process.env, NO_COLOR: '1' }
+      });
+      daemon.on('error', (error) => { daemonSpawnError = error; });
+
+      let ready = false;
+      let lastError = null;
+      for (let attempt = 0; attempt < 50; attempt += 1) {
+        if (daemonSpawnError) throw daemonSpawnError;
+        if (daemon.exitCode !== null) {
+          throw new Error(`NELRoot service daemon exited early with code ${daemon.exitCode}`);
+        }
+        try {
+          await run(['service', 'list', environment]);
+          ready = true;
+          break;
+        } catch (error) {
+          lastError = error;
+          await new Promise((resolve) => setTimeout(resolve, 100));
+        }
+      }
+      if (!ready) {
+        throw new Error(`NELRoot service daemon did not become ready: ${String(lastError?.message || 'timeout').slice(0, 240)}`);
+      }
+
+      await run(['service', 'register', environment, manifestPath]);
+      parseStatus(await run(['service', 'start', environment, service]));
+      const running = parseStatus(await run(['service', 'status', environment, service]));
+      if (running.state !== 'running') {
+        throw new Error(`service did not reach running state (state: ${running.state})`);
+      }
+
+      const stopped = parseStatus(await run(['service', 'stop', environment, service]));
+      if (stopped.state !== 'stopped') {
+        throw new Error(`service did not reach stopped state (state: ${stopped.state})`);
+      }
+
+      return {
+        ok: true,
+        environment,
+        service,
+        started_state: running.state,
+        stopped_state: stopped.state
+      };
+    } finally {
+      if (daemon && daemon.exitCode === null) {
+        await new Promise((resolve) => {
+          const timeout = setTimeout(resolve, 3000);
+          daemon.once('exit', () => {
+            clearTimeout(timeout);
+            resolve();
+          });
+          daemon.kill('SIGTERM');
+        });
+        if (daemon.exitCode === null) daemon.kill('SIGKILL');
+      }
+      if (environmentCreated) {
+        try { await run(['server', 'remove', environment]); } catch {}
+      }
+      await fs.rm(tempDirectory, { recursive: true, force: true });
+    }
+  }
+
   shellCommand() {
+    // Only fixed, administrator-configured executable and image values reach the PTY.
+    return {
+      file: this.binary,
+      args: [
+        'run-rootless',
+        this.image,
+        '--',
+        this.shell,
+        '--noprofile',
+        '--norc',
+        '-i'
+      ]
+    };
+  }  shellCommand() {
     // Only fixed, administrator-configured executable and image values reach the PTY.
     return {
       file: this.binary,
