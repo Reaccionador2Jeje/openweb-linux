@@ -247,16 +247,20 @@ class DockerRuntime {
 
   async inspect() {
     const [daemon, image] = await Promise.allSettled([
-      this.command(['info', '--format', '{{.ServerVersion}}']),
+      this.command(['info']),
       this.command(['image', 'inspect', this.image])
     ]);
+    const daemonOutput = daemon.status === 'fulfilled' ? daemon.value.stdout : '';
     const daemonAvailable = daemon.status === 'fulfilled'
-      && Boolean(daemon.value.stdout.trim());
+      && /Server Version:/i.test(daemonOutput);
+    const dockerVersion = daemonAvailable
+      ? (daemonOutput.match(/Server Version:\s*([^\r\n]+)/i)?.[1] || 'available').trim()
+      : null;
     const imageAvailable = image.status === 'fulfilled';
     return {
       provider: 'Docker',
       docker_available: daemonAvailable,
-      docker_version: daemonAvailable ? daemon.value.stdout.trim().slice(0, 80) : null,
+      docker_version: dockerVersion,
       image: this.image,
       image_available: imageAvailable,
       ready: daemonAvailable && imageAvailable,
