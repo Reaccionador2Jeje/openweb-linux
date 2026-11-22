@@ -73,7 +73,8 @@ The backend runs as an unprivileged user. Do not solve socket permission problem
 - `GET /auth/github` and `GET /auth/github/callback` — GitHub OAuth.
 - `POST /api/session` — one-time login-code exchange for a short-lived WebSocket ticket.
 - `POST /api/local-session` — optional local-device token exchange; disabled unless explicitly enabled.
-- `GET /api/status` — administrator-token protected Docker Engine/image preflight.
+- `GET /api/status` — administrator-token protected runtime preflight.
+- `GET /api/runtime-status` — minimal CORS-enabled runtime availability for the web runtime picker; does not expose secrets or diagnostic error strings.
 - `GET /terminal?ticket=...` — consumes a one-time ticket and opens the PTY.
 
 Only explicitly allowlisted GitHub accounts can sign in. Keep the allowlist small while the runtime is under development.
