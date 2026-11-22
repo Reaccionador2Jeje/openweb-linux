@@ -21,7 +21,7 @@ The current NELRoot rootless contract has important limitations:
 - networking is not isolated and resource limits are not yet enforced by NELRoot;
 - package installation with `apt` should not be advertised as working in this stage.
 
-The backend reports these limitations through `GET /api/status`. It refuses to call the runtime ready unless NELRoot, its machine-readable engine status and the configured image are all present. A successful API status check is a preflight, not proof that the image can complete a shell session on every host.
+The backend reports these limitations through `GET /api/status`. Before allowing a terminal session, it requires NELRoot, valid machine-readable engine status, the configured image, and a successful real `run-rootless <image> -- /bin/true` probe. This confirms the host can launch a basic process, but it does not turn NELRoot into a complete security sandbox.
 
 ## Host requirements
 
