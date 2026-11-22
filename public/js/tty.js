@@ -163,8 +163,8 @@
         case "ready":
           state = "ready";
           write("\r\n\x1b[32mConnected to Linux runtime.\x1b[0m\r\n");
-          write("\x1b[90mRuntime: " + String(message.runtime || "Linux") +
-            " · Image: " + String(message.image || "Ubuntu") + "\x1b[0m\r\n\r\n");
+          write("\\x1b[90mRuntime: " + String(message.runtime || "Linux") +
+            (message.image ? " · Image: " + String(message.image) : "") + "\\x1b[0m\\r\\n\\r\\n");
           terminal.focus();
           sendResize();
           break;
