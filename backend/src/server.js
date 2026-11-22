@@ -503,7 +503,7 @@ server.listen(PORT, HOST, () => {
     .then((result) => {
       serviceManagerSmokeTest = result;
       process.stdout.write(
-        'NELRoot service manager smoke test: ' + JSON.stringify(result) + '\\n'
+        'NELRoot service manager smoke test: ' + JSON.stringify(result) + '\n'
       );
     })
     .catch((error) => {
@@ -513,7 +513,7 @@ server.listen(PORT, HOST, () => {
       };
       process.stderr.write(
         'NELRoot service manager smoke test failed: ' +
-        serviceManagerSmokeTest.error + '\\n'
+        serviceManagerSmokeTest.error + '\n'
       );
     });
 });
