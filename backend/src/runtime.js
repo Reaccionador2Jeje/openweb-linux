@@ -25,6 +25,7 @@ class NelRootRuntime {
     this.image = options.image || process.env.NELROOT_IMAGE || 'ubuntu';
     this.shell = options.shell || process.env.NELROOT_SHELL || '/bin/bash';
     this.execTimeoutMs = options.execTimeoutMs || 8000;
+    this.smokeTestDaemon = null;
     if (!validateImageName(this.image)) throw new Error('NELROOT_IMAGE has an invalid name');
     if (!validateShellPath(this.shell)) throw new Error('NELROOT_SHELL must be a safe absolute path');
   }
@@ -124,6 +125,7 @@ class NelRootRuntime {
         env: { ...process.env, NO_COLOR: '1' }
       });
       daemon.on('error', (error) => { daemonSpawnError = error; });
+      this.smokeTestDaemon = daemon;
 
       let ready = false;
       let lastError = null;
@@ -166,20 +168,33 @@ class NelRootRuntime {
       };
     } finally {
       if (daemon && daemon.pid && daemon.exitCode === null && daemon.signalCode === null) {
-        await new Promise((resolve) => {
-          const timeout = setTimeout(resolve, 3000);
-          daemon.once('exit', () => {
-            clearTimeout(timeout);
-            resolve();
-          });
-          daemon.kill('SIGTERM');
-        });
-        if (daemon.exitCode === null && daemon.signalCode === null) daemon.kill('SIGKILL');
+        await this.stopServiceSmokeTest();
       }
+      if (this.smokeTestDaemon === daemon) this.smokeTestDaemon = null;
       if (environmentCreated) {
         try { await run(['server', 'remove', environment]); } catch {}
       }
       await fs.rm(tempDirectory, { recursive: true, force: true });
+    }
+  }
+
+  async stopServiceSmokeTest() {
+    const daemon = this.smokeTestDaemon;
+    if (!daemon || !daemon.pid || daemon.exitCode !== null || daemon.signalCode !== null) {
+      return;
+    }
+
+    await new Promise((resolve) => {
+      const timeout = setTimeout(resolve, 2000);
+      daemon.once('exit', () => {
+        clearTimeout(timeout);
+        resolve();
+      });
+      daemon.kill('SIGTERM');
+    });
+
+    if (daemon.exitCode === null && daemon.signalCode === null) {
+      daemon.kill('SIGKILL');
     }
   }
 
