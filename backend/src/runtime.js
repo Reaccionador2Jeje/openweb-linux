@@ -53,10 +53,21 @@ class NelRootRuntime {
   }
 
   async inspect() {
-    const [versionResult, engineResult, imageResult] = await Promise.allSettled([
+    const [versionResult, engineResult, imageResult, rootlessResult] = await Promise.allSettled([
       this.command(['--version']),
       this.command(['engine', 'status', '--json']),
-      this.command(['image', 'inspect', this.image])
+      this.command(['image', 'inspect', this.image]),
+      this.command([
+        'run-rootless',
+        this.image,
+        '--cwd', '/',
+        '--memory', String(this.memory),
+        '--cpu-time', String(this.cpuTime),
+        '--max-files', String(this.maxFiles),
+        '--max-file-size', String(this.maxFileSize),
+        '--',
+        '/bin/true'
+      ])
     ]);
 
     const version = versionResult.status === 'fulfilled'
@@ -73,6 +84,7 @@ class NelRootRuntime {
 
     const imageAvailable = imageResult.status === 'fulfilled';
     const binaryAvailable = versionResult.status === 'fulfilled';
+    const rootlessAvailable = rootlessResult.status === 'fulfilled';
     return {
       provider: 'NELRoot',
       binary_available: binaryAvailable,
@@ -80,7 +92,8 @@ class NelRootRuntime {
       engine_status_available: Boolean(engine),
       image: this.image,
       image_available: imageAvailable,
-      ready: binaryAvailable && Boolean(engine) && imageAvailable,
+      rootless_probe_available: rootlessAvailable,
+      ready: binaryAvailable && Boolean(engine) && imageAvailable && rootlessAvailable,
       limitations: [
         'NELRoot rootless execution currently uses the host kernel and requires a same-architecture Linux image.',
         'The guest root filesystem is read-only except for its temporary /tmp mount.',
@@ -90,7 +103,8 @@ class NelRootRuntime {
         'This backend does not provide a VM or a complete security sandbox.'
       ],
       ...(engineError ? { engine_error: engineError } : {}),
-      ...(imageAvailable ? {} : { image_error: String(imageResult.reason?.message || 'Image is not registered').slice(0, 300) })
+      ...(imageAvailable ? {} : { image_error: String(imageResult.reason?.message || 'Image is not registered').slice(0, 300) }),
+      ...(rootlessAvailable ? {} : { rootless_probe_error: String(rootlessResult.reason?.message || 'Rootless execution preflight failed').slice(0, 300) })
     };
   }
 
