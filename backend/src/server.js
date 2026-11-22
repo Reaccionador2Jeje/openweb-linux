@@ -25,7 +25,7 @@ const ALLOWED_ORIGINS = parseAllowedOrigins(process.env.OPENWEB_ALLOWED_ORIGINS 
 const TICKET_TTL_MS = 30_000;
 const GITHUB_CLIENT_ID = process.env.OPENWEB_GITHUB_CLIENT_ID || '';
 const GITHUB_CLIENT_SECRET = process.env.OPENWEB_GITHUB_CLIENT_SECRET || '';
-const BACKEND_PUBLIC_URL = (process.env.OPENWEB_BACKEND_PUBLIC_URL || '').replace(/\\/$/, '');
+const BACKEND_PUBLIC_URL = (process.env.OPENWEB_BACKEND_PUBLIC_URL || '').replace(/\/$/, '');
 const FRONTEND_URL = process.env.OPENWEB_FRONTEND_URL || 'https://reaccionador2jeje.github.io/openweb-linux/';
 const GITHUB_ALLOWED_USERS = new Set(
   (process.env.OPENWEB_GITHUB_ALLOWED_USERS || '')
