@@ -4,7 +4,7 @@
 
 [Open the GitHub Pages demo](https://reaccionador2jeje.github.io/openweb-linux/) · [Source code](https://github.com/Reaccionador2Jeje/openweb-linux) · [Backend setup](backend/README.md) · [Android Local Mode](docs/ANDROID-LOCAL-MODE.md)
 
-> **Status:** The TTY frontend supports the Docker runtime. Access is restricted to GitHub usernames explicitly approved by the administrator. A separate Docker Engine must be configured; the Render container does not provide its host Docker socket.
+> **Status:** The web frontend offers a runtime picker: Local PRoot connects to the backend on the same Android device; Remote Host connects to the configured hosted backend. The actual runtime (Docker, NELRoot or PRoot) is selected by backend configuration, never by an untrusted browser parameter. Access is restricted to GitHub usernames explicitly approved by the administrator. A separate Docker Engine must be configured; the Render container does not provide its host Docker socket.
 
 ## TTY interface
 
@@ -36,6 +36,12 @@ Ubuntu container (no network, no host mounts)
 ```
 
 GitHub Pages serves only static files. It cannot run the Linux backend. The backend requires a dedicated Docker Engine endpoint. The current Render service is itself a container and does not expose its host Docker daemon, so its API may be live while terminal creation remains unavailable. See [backend setup](backend/README.md) for host requirements.
+
+## Web runtime picker
+
+The first page lets the user choose **PRoot · This Android device** or **Remote host · Docker / NELRoot**. Local mode connects to `ws://127.0.0.1:8787` on the same device; it does not send terminal commands to GitHub Pages. Remote mode uses the configured WSS backend. The backend administrator selects `OPENWEB_RUNTIME`; the browser cannot switch a server's runtime.
+
+PRoot mode is local-only and has no container isolation. It must remain bound to loopback and is intended only for trusted personal development. Docker and NELRoot require a compatible Linux host and successful backend preflight.
 
 ## Frontend setup
 
