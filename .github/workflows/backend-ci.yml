@@ -5,11 +5,15 @@ on:
     branches: [main]
     paths:
       - "backend/**"
+      - "Dockerfile"
+      - "docker/**"
       - "deploy/native/**"
       - ".github/workflows/backend-ci.yml"
   pull_request:
     paths:
       - "backend/**"
+      - "Dockerfile"
+      - "docker/**"
       - "deploy/native/**"
       - ".github/workflows/backend-ci.yml"
 
@@ -37,5 +41,5 @@ jobs:
       - name: Check JavaScript syntax
         working-directory: backend
         run: npm run check
-      - name: Check native deployment shell syntax
-        run: sh -n deploy/native/preflight.sh
+      - name: Check deployment shell syntax
+        run: sh -n deploy/native/preflight.sh && sh -n docker/entrypoint.sh
