@@ -23,6 +23,20 @@ const IDLE_TIMEOUT_MS = Math.max(60_000, Number.parseInt(process.env.OPENWEB_IDL
 const MAX_INPUT_BYTES = Math.max(1024, Math.min(65536, Number.parseInt(process.env.OPENWEB_MAX_INPUT_BYTES || '16384', 10)));
 const ALLOWED_ORIGINS = parseAllowedOrigins(process.env.OPENWEB_ALLOWED_ORIGINS || '');
 const TICKET_TTL_MS = 30_000;
+const GITHUB_CLIENT_ID = process.env.OPENWEB_GITHUB_CLIENT_ID || '';
+const GITHUB_CLIENT_SECRET = process.env.OPENWEB_GITHUB_CLIENT_SECRET || '';
+const BACKEND_PUBLIC_URL = (process.env.OPENWEB_BACKEND_PUBLIC_URL || '').replace(/\\/$/, '');
+const FRONTEND_URL = process.env.OPENWEB_FRONTEND_URL || 'https://reaccionador2jeje.github.io/openweb-linux/';
+const GITHUB_ALLOWED_USERS = new Set(
+  (process.env.OPENWEB_GITHUB_ALLOWED_USERS || '')
+    .split(',')
+    .map((name) => name.trim().toLowerCase())
+    .filter(Boolean)
+);
+const OAUTH_STATE_TTL_MS = 5 * 60_000;
+const LOGIN_CODE_TTL_MS = 60_000;
+const oauthStates = new Map();
+const loginCodes = new Map();
 
 const runtime = new NelRootRuntime();
 const sessions = new Map();
@@ -60,6 +74,135 @@ function authorized(request) {
   const header = request.headers.authorization || '';
   const supplied = header.startsWith('Bearer ') ? header.slice(7) : '';
   return safeEqual(supplied, TOKEN);
+}
+
+function readJsonBody(request, maxBytes = 4096) {
+  return new Promise((resolve, reject) => {
+    let body = '';
+    let bytes = 0;
+    request.on('data', (chunk) => {
+      bytes += chunk.length;
+      if (bytes > maxBytes) {
+        reject(new Error('request_too_large'));
+        request.destroy();
+        return;
+      }
+      body += chunk.toString('utf8');
+    });
+    request.on('end', () => {
+      try { resolve(JSON.parse(body || '{}')); }
+      catch { reject(new Error('invalid_json')); }
+    });
+    request.on('error', reject);
+  });
+}
+
+function cookieValue(request, name) {
+  const cookies = request.headers.cookie || '';
+  for (const part of cookies.split(';')) {
+    const separator = part.indexOf('=');
+    if (separator < 0) continue;
+    if (part.slice(0, separator).trim() === name) {
+      return decodeURIComponent(part.slice(separator + 1).trim());
+    }
+  }
+  return '';
+}
+
+function pruneAuthStores() {
+  const now = Date.now();
+  for (const [state, expiresAt] of oauthStates) {
+    if (expiresAt <= now) oauthStates.delete(state);
+  }
+  for (const [code, entry] of loginCodes) {
+    if (entry.expiresAt <= now) loginCodes.delete(code);
+  }
+}
+
+function redirect(response, location, extraHeaders = {}) {
+  response.writeHead(302, {
+    location,
+    'cache-control': 'no-store',
+    'referrer-policy': 'no-referrer',
+    'x-content-type-options': 'nosniff',
+    ...extraHeaders
+  });
+  response.end();
+}
+
+async function beginGithubLogin(response) {
+  if (!GITHUB_CLIENT_ID || !GITHUB_CLIENT_SECRET || !BACKEND_PUBLIC_URL || GITHUB_ALLOWED_USERS.size === 0) {
+    return sendJson(response, 503, { error: 'github_login_not_configured' });
+  }
+
+  pruneAuthStores();
+  const state = crypto.randomBytes(32).toString('base64url');
+  oauthStates.set(state, Date.now() + OAUTH_STATE_TTL_MS);
+  const callback = BACKEND_PUBLIC_URL + '/auth/github/callback';
+  const authorize = new URL('https://github.com/login/oauth/authorize');
+  authorize.searchParams.set('client_id', GITHUB_CLIENT_ID);
+  authorize.searchParams.set('redirect_uri', callback);
+  authorize.searchParams.set('scope', 'read:user');
+  authorize.searchParams.set('state', state);
+
+  return redirect(response, authorize.toString(), {
+    'set-cookie': 'openweb_oauth_state=' + encodeURIComponent(state) + '; HttpOnly; Secure; SameSite=Lax; Path=/auth/github/callback; Max-Age=300'
+  });
+}
+
+async function finishGithubLogin(request, response, url) {
+  const state = url.searchParams.get('state') || '';
+  const code = url.searchParams.get('code') || '';
+  const cookieState = cookieValue(request, 'openweb_oauth_state');
+  const stateExpiry = oauthStates.get(state);
+  oauthStates.delete(state);
+
+  const clearStateCookie = 'openweb_oauth_state=; HttpOnly; Secure; SameSite=Lax; Path=/auth/github/callback; Max-Age=0';
+  if (!state || !code || !cookieState || !safeEqual(state, cookieState) || !stateExpiry || stateExpiry <= Date.now()) {
+    return redirect(response, FRONTEND_URL + '?auth_error=invalid_oauth_state', { 'set-cookie': clearStateCookie });
+  }
+
+  try {
+    const tokenResponse = await fetch('https://github.com/login/oauth/access_token', {
+      method: 'POST',
+      headers: { accept: 'application/json', 'content-type': 'application/json' },
+      body: JSON.stringify({
+        client_id: GITHUB_CLIENT_ID,
+        client_secret: GITHUB_CLIENT_SECRET,
+        code,
+        redirect_uri: BACKEND_PUBLIC_URL + '/auth/github/callback'
+      }),
+      signal: AbortSignal.timeout(10_000)
+    });
+    const tokenData = await tokenResponse.json();
+    if (!tokenResponse.ok || typeof tokenData.access_token !== 'string') {
+      throw new Error('github_token_exchange_failed');
+    }
+
+    const userResponse = await fetch('https://api.github.com/user', {
+      headers: {
+        authorization: 'Bearer ' + tokenData.access_token,
+        accept: 'application/vnd.github+json',
+        'user-agent': 'OpenWeb-Linux'
+      },
+      signal: AbortSignal.timeout(10_000)
+    });
+    const user = await userResponse.json();
+    if (!userResponse.ok || typeof user.login !== 'string') {
+      throw new Error('github_identity_failed');
+    }
+
+    if (!GITHUB_ALLOWED_USERS.has(user.login.toLowerCase())) {
+      return redirect(response, FRONTEND_URL + '?auth_error=not_allowlisted', { 'set-cookie': clearStateCookie });
+    }
+
+    pruneAuthStores();
+    const loginCode = crypto.randomBytes(32).toString('base64url');
+    loginCodes.set(loginCode, { login: user.login, expiresAt: Date.now() + LOGIN_CODE_TTL_MS });
+    return redirect(response, FRONTEND_URL + '?auth_code=' + encodeURIComponent(loginCode), { 'set-cookie': clearStateCookie });
+  } catch {
+    return redirect(response, FRONTEND_URL + '?auth_error=github_auth_failed', { 'set-cookie': clearStateCookie });
+  }
 }
 
 function closeSession(id, reason = 'session closed') {
@@ -102,6 +245,14 @@ const server = http.createServer(async (request, response) => {
     });
   }
 
+  if (request.method === 'GET' && url.pathname === '/auth/github') {
+    return beginGithubLogin(response);
+  }
+
+  if (request.method === 'GET' && url.pathname === '/auth/github/callback') {
+    return finishGithubLogin(request, response, url);
+  }
+
   if (url.pathname === '/api/session') {
     if (!originAllowed(origin, ALLOWED_ORIGINS)) {
       return sendJson(response, 403, { error: 'origin_not_allowed' });
@@ -111,7 +262,7 @@ const server = http.createServer(async (request, response) => {
       response.writeHead(204, {
         'access-control-allow-origin': origin,
         'access-control-allow-methods': 'POST, OPTIONS',
-        'access-control-allow-headers': 'Authorization, Content-Type',
+        'access-control-allow-headers': 'Content-Type',
         'access-control-max-age': '300',
         'vary': 'Origin',
         'cache-control': 'no-store'
@@ -123,15 +274,29 @@ const server = http.createServer(async (request, response) => {
       return sendJson(response, 405, { error: 'method_not_allowed' }, origin);
     }
 
-    if (!authorized(request)) {
-      return sendJson(response, 401, { error: 'unauthorized' }, origin);
+    let payload;
+    try { payload = await readJsonBody(request); }
+    catch (error) {
+      return sendJson(response, error.message === 'request_too_large' ? 413 : 400, { error: error.message }, origin);
+    }
+
+    const loginCode = typeof payload.code === 'string' ? payload.code : '';
+    pruneAuthStores();
+    const login = loginCodes.get(loginCode);
+    if (!login || login.expiresAt <= Date.now()) {
+      return sendJson(response, 401, { error: 'login_code_invalid_or_expired' }, origin);
+    }
+    loginCodes.delete(loginCode);
+
+    if (!GITHUB_ALLOWED_USERS.has(login.login.toLowerCase())) {
+      return sendJson(response, 403, { error: 'user_not_allowed' }, origin);
     }
 
     const ticket = ticketStore.issue(origin);
-
     return sendJson(response, 200, {
       ticket,
-      expires_in: TICKET_TTL_MS / 1000
+      expires_in: TICKET_TTL_MS / 1000,
+      user: login.login
     }, origin);
   }
 
