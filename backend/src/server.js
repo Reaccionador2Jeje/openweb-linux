@@ -15,7 +15,7 @@ const {
   createTicketStore
 } = require('./security');
 
-const HOST = process.env.HOST || '127.0.0.1';
+const HOST = (process.env.OPENWEB_RUNTIME || 'docker').toLowerCase() === 'proot' ? '127.0.0.1' : (process.env.HOST || '127.0.0.1');
 const PORT = Number.parseInt(process.env.PORT || '8787', 10);
 const TOKEN = process.env.OPENWEB_ACCESS_TOKEN || '';
 const MAX_SESSIONS = Math.max(1, Math.min(20, Number.parseInt(process.env.OPENWEB_MAX_SESSIONS || '3', 10)));
@@ -405,14 +405,15 @@ wss.on('connection', async (socket) => {
   if (!preflight || !preflight.ready) {
     if (socket.readyState === WebSocket.OPEN) {
       const dockerRuntime = runtime.provider === 'Docker';
+      const prootRuntime = runtime.provider === 'PRoot';
       socket.send(JSON.stringify({
         type: 'error',
-        code: dockerRuntime ? 'DOCKER_ENGINE_UNAVAILABLE' : 'ROOTLESS_PREFLIGHT_FAILED',
+        code: dockerRuntime ? 'DOCKER_ENGINE_UNAVAILABLE' : (prootRuntime ? 'PROOT_PREFLIGHT_FAILED' : 'ROOTLESS_PREFLIGHT_FAILED'),
         message: dockerRuntime
           ? 'OpenWeb no puede alcanzar el Docker Engine configurado o la imagen de sesión no está disponible.'
-          : 'NELRoot no superó la comprobación de aislamiento en este host. La terminal se mantiene deshabilitada por seguridad.',
+          : (prootRuntime ? 'El entorno PRoot local no superó las comprobaciones básicas.' : 'NELRoot no superó la comprobación de aislamiento en este host. La terminal se mantiene deshabilitada por seguridad.'),
         hint: dockerRuntime
-          ? 'Configura un Docker Engine dedicado y seguro mediante el socket local o un endpoint remoto protegido; comprueba que la imagen configurada exista.'
+          ? 'Comprueba el Docker Engine y la imagen configurada.'
           : 'Consulta el diagnóstico del backend en /api/status o en los logs del servicio.'
       }));
       socket.close(1013, 'runtime preflight failed');
@@ -552,6 +553,22 @@ server.listen(PORT, HOST, () => {
   process.stdout.write(
     'OpenWeb Linux ' + runtime.provider + ' backend listening on http://' + HOST + ':' + PORT + '\n'
   );
+
+  if (runtime.provider === 'PRoot') {
+    serviceManagerSmokeTest = { status: 'not_applicable', runtime: 'PRoot' };
+    runtime.inspect().then((status) => {
+      process.stdout.write('PRoot runtime preflight: ' + JSON.stringify({
+        ready: status.ready,
+        proot_detected: status.proot_detected,
+        shell: status.shell,
+        shell_available: status.shell_available,
+        local_only: status.local_only
+      }) + '\\n');
+    }).catch((error) => {
+      process.stderr.write('PRoot runtime preflight failed: ' + String(error?.message || error).slice(0, 240) + '\\n');
+    });
+    return;
+  }
 
   if (runtime.provider === 'Docker') {
     serviceManagerSmokeTest = { status: 'not_applicable', runtime: 'Docker' };
