@@ -351,7 +351,25 @@ server.on('upgrade', (request, socket, head) => {
   });
 });
 
-wss.on('connection', (socket) => {
+wss.on('connection', async (socket) => {
+  // Never open an interactive shell unless the actual rootless runtime probe succeeds.
+  let preflight;
+  try {
+    preflight = await runtime.inspect();
+  } catch {
+    preflight = null;
+  }
+  if (!preflight || !preflight.ready) {
+    if (socket.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify({
+        type: 'error',
+        message: 'NELRoot is not ready on this host. Interactive shell access is disabled.'
+      }));
+      socket.close(1013, 'runtime preflight failed');
+    }
+    return;
+  }
+
   const id = crypto.randomUUID();
   const command = runtime.shellCommand();
   let terminal;
