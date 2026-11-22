@@ -23,6 +23,8 @@ The current NELRoot rootless contract has important limitations:
 
 The backend reports these limitations through `GET /api/status`. Before allowing a terminal session, it requires NELRoot, valid machine-readable engine status, the configured image, and a successful real `run-rootless <image> -- /bin/true` probe. This confirms the host can launch a basic process, but it does not turn NELRoot into a complete security sandbox.
 
+On backend startup, OpenWeb runs a bounded service-manager smoke test unless `OPENWEB_NELROOT_SERVICE_SMOKE_TEST=false`: it creates a temporary server-environment definition, starts the local NELRoot service daemon, launches `/bin/sleep` as an isolated guest service, verifies `running`, stops it, and cleans up the test environment. The result is written to backend logs and included in the administrator-protected `GET /api/status` response. This checks process lifecycle only; the OpenWeb web UI still does not expose service-management controls or guest port publishing.
+
 On backend startup, OpenWeb also runs a bounded service-manager smoke test (unless `OPENWEB_NELROOT_SERVICE_SMOKE_TEST=false`): it creates a temporary server-environment definition, starts the local NELRoot service daemon, launches `/bin/sleep` as an isolated guest service, verifies `running`, stops it, and cleans up the test environment. The result is written to backend logs and included in the administrator-protected `GET /api/status` response. This checks process lifecycle only; the OpenWeb web UI still does not expose service-management controls or guest port publishing.
 
 ## Host requirements
