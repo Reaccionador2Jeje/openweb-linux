@@ -2,7 +2,7 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { validateImageName, validateShellPath, NelRootRuntime } = require('../src/runtime');
+const { validateImageName, validateShellPath, validateDockerImage, DockerRuntime, NelRootRuntime } = require('../src/runtime');
 const { safeEqual, parseAllowedOrigins, originAllowed, validTerminalSize, createTicketStore } = require('../src/security');
 
 test('image names accept simple registered identifiers', () => {
@@ -47,6 +47,53 @@ test('runtime preflight uses the documented rootless CLI syntax', async () => {
 test('runtime rejects unsafe image and shell configuration', () => {
   assert.throws(() => new NelRootRuntime({ image: '../../host' }));
   assert.throws(() => new NelRootRuntime({ shell: '/bin/../../bin/sh' }));
+});
+
+
+test('Docker image references accept pinned tags and reject unsafe input', () => {
+  assert.equal(validateDockerImage('ubuntu:24.04'), true);
+  assert.equal(validateDockerImage('ghcr.io/example/ubuntu:stable'), true);
+  assert.equal(validateDockerImage('--privileged'), false);
+  assert.equal(validateDockerImage('../../host'), false);
+  assert.equal(validateDockerImage('ubuntu;id'), false);
+});
+
+test('Docker runtime builds a restricted per-session container command', async () => {
+  const runtime = new DockerRuntime({
+    binary: '/usr/bin/docker',
+    image: 'ubuntu:24.04',
+    shell: '/bin/bash'
+  });
+  let invocation;
+  runtime.command = async (args) => {
+    invocation = args;
+    return { stdout: 'container-id' };
+  };
+
+  const session = await runtime.createSession();
+  assert.match(session.id, /^openweb-[0-9a-f-]{36}$/);
+  assert.equal(invocation[0], 'run');
+  assert.ok(invocation.includes('--network'));
+  assert.ok(invocation.includes('none'));
+  assert.ok(invocation.includes('--read-only'));
+  assert.ok(invocation.includes('--cap-drop'));
+  assert.ok(invocation.includes('ALL'));
+  assert.ok(invocation.includes('--pids-limit'));
+  assert.ok(invocation.includes('128'));
+  assert.ok(invocation.includes('--memory'));
+  assert.ok(invocation.includes('512m'));
+  assert.equal(invocation.at(-2), 'sleep');
+  assert.equal(invocation.at(-1), 'infinity');
+
+  assert.deepEqual(runtime.shellCommand(session), {
+    file: '/usr/bin/docker',
+    args: ['exec', '--interactive', '--tty', session.id, '/bin/bash', '--noprofile', '--norc', '-i']
+  });
+});
+
+test('Docker runtime refuses a malformed session identifier', () => {
+  const runtime = new DockerRuntime();
+  assert.throws(() => runtime.shellCommand({ id: '--privileged' }));
 });
 
 test('bearer secret comparison handles mismatched values safely', () => {
