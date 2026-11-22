@@ -4,6 +4,10 @@
   const CONFIG = window.OPENWEB_TTY_CONFIG || {};
   const root = document.getElementById("terminal");
   const loginButton = document.getElementById("github-login");
+  const localLogin = document.getElementById("local-login");
+  const localToken = document.getElementById("local-token");
+  const localConnect = document.getElementById("local-connect");
+  const localMode = new URLSearchParams(location.search).get("mode") === "local";
 
   let terminal;
   let fitAddon;
@@ -11,6 +15,7 @@
   let state = "boot";
 
   function getBackendUrl() {
+    if (localMode) return new URL("ws://127.0.0.1:8787/terminal");
     const value = CONFIG.backendUrl || "";
     if (!value) return null;
     try {
@@ -76,6 +81,52 @@
     } catch (error) {
       showError(error.message || "Could not verify GitHub sign-in.");
       if (loginButton) loginButton.hidden = false;
+    }
+  }
+
+  async function exchangeLocalToken() {
+    const token = localToken ? localToken.value.trim() : "";
+    if (!token) {
+      showError("Enter the access token configured on your own device.");
+      return;
+    }
+
+    const api = getApiUrl("/api/local-session");
+    if (!api) {
+      showError("The local backend URL is invalid.");
+      return;
+    }
+
+    state = "authenticating";
+    if (localConnect) localConnect.disabled = true;
+    write("\r\nConnecting to the backend on this device...\r\n");
+
+    try {
+      const response = await fetch(api.toString(), {
+        method: "POST",
+        headers: { "Authorization": "Bearer " + token },
+        cache: "no-store",
+        referrerPolicy: "no-referrer"
+      });
+      const result = await response.json();
+      if (!response.ok || typeof result.ticket !== "string") {
+        const reason = result.error === "local_auth_disabled"
+          ? "Local sign-in is disabled in the backend configuration."
+          : result.error === "unauthorized"
+            ? "The local access token is incorrect."
+            : "Could not create a local session.";
+        throw new Error(reason);
+      }
+      localToken.value = "";
+      if (localLogin) localLogin.hidden = true;
+      write("\x1b[32mLocal device authorized.\x1b[0m\r\n");
+      connect(result.ticket);
+    } catch (error) {
+      showError(error.message || "Could not connect to the local backend.");
+      if (localToken) localToken.value = "";
+      if (localLogin) localLogin.hidden = false;
+    } finally {
+      if (localConnect) localConnect.disabled = false;
     }
   }
 
@@ -210,27 +261,40 @@
       history.replaceState({}, document.title, location.pathname + location.hash);
     }
 
-    if (loginButton) {
-      const loginUrl = getApiUrl("/auth/github");
-      loginButton.href = loginUrl ? loginUrl.toString() : "#";
-      loginButton.hidden = Boolean(authCode);
-    }
-
-    if (authError) {
-      const messages = {
-        not_allowlisted: "Your GitHub account is not authorized for OpenWeb Linux.",
-        invalid_oauth_state: "The sign-in request expired or could not be verified. Try again.",
-        github_auth_failed: "GitHub sign-in could not be completed. Try again."
-      };
-      showError(messages[authError] || "GitHub sign-in failed.");
-      write("Use the Sign in with GitHub button to try again.\r\n");
-    } else if (authCode) {
+    if (localMode) {
       if (loginButton) loginButton.hidden = true;
-      exchangeLoginCode(authCode);
-    } else {
+      if (localLogin) localLogin.hidden = false;
       state = "signed_out";
-      write("Sign in with GitHub to start a terminal session.\r\n");
-      write("Your account must be approved by the OpenWeb Linux administrator.\r\n");
+      write("OpenWeb Local Mode · backend: 127.0.0.1:8787\r\n");
+      write("Start the backend on this Android device, then enter its local access token.\r\n");
+      if (localConnect) localConnect.addEventListener("click", exchangeLocalToken);
+      if (localToken) localToken.addEventListener("keydown", event => {
+        if (event.key === "Enter") exchangeLocalToken();
+      });
+    } else {
+      if (localLogin) localLogin.hidden = true;
+      if (loginButton) {
+        const loginUrl = getApiUrl("/auth/github");
+        loginButton.href = loginUrl ? loginUrl.toString() : "#";
+        loginButton.hidden = Boolean(authCode);
+      }
+
+      if (authError) {
+        const messages = {
+          not_allowlisted: "Your GitHub account is not authorized for OpenWeb Linux.",
+          invalid_oauth_state: "The sign-in request expired or could not be verified. Try again.",
+          github_auth_failed: "GitHub sign-in could not be completed. Try again."
+        };
+        showError(messages[authError] || "GitHub sign-in failed.");
+        write("Use the Sign in with GitHub button to try again.\r\n");
+      } else if (authCode) {
+        if (loginButton) loginButton.hidden = true;
+        exchangeLoginCode(authCode);
+      } else {
+        state = "signed_out";
+        write("Sign in with GitHub to start a terminal session.\r\n");
+        write("Your account must be approved by the OpenWeb Linux administrator.\r\n");
+      }
     }
 
     terminal.onData(data => {
