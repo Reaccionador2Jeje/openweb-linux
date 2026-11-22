@@ -26,3 +26,9 @@ noscript{position:fixed;inset:0;display:grid;place-items:center;padding:2rem;bac
 #runtime-picker button small{color:#aaa;font-size:12px}
 #runtime-picker p{margin:0}
 #terminal[hidden]{display:none}
+
+#runtime-picker .runtime-status{font-size:12px;color:#aaa}
+#runtime-picker .runtime-status[data-state="ready"]{color:#65d98a}
+#runtime-picker .runtime-status[data-state="warning"]{color:#f0bd65}
+#runtime-picker .runtime-status[data-state="offline"]{color:#e28a8a}
+#runtime-picker .refresh-runtimes{align-self:flex-start;padding:8px 11px;font-size:12px}
