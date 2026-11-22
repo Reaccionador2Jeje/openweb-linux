@@ -66,7 +66,7 @@ function sendJson(response, status, payload, origin = '') {
   if (origin && originAllowed(origin, ALLOWED_ORIGINS)) {
     headers['access-control-allow-origin'] = origin;
     headers['access-control-allow-headers'] = 'Authorization, Content-Type';
-    headers['access-control-allow-methods'] = 'POST, OPTIONS';
+    headers['access-control-allow-methods'] = 'GET, POST, OPTIONS';
     headers.vary = 'Origin';
   }
 
@@ -242,6 +242,52 @@ function touchSession(id) {
 const server = http.createServer(async (request, response) => {
   const url = new URL(request.url, 'http://localhost');
   const origin = request.headers.origin || '';
+
+  if (url.pathname === '/api/runtime-status') {
+    if (!originAllowed(origin, ALLOWED_ORIGINS)) {
+      return sendJson(response, 403, { error: 'origin_not_allowed' });
+    }
+
+    if (request.method === 'OPTIONS') {
+      const headers = {
+        'access-control-allow-origin': origin,
+        'access-control-allow-methods': 'GET, OPTIONS',
+        'access-control-allow-headers': 'Content-Type',
+        'access-control-max-age': '300',
+        'vary': 'Origin',
+        'cache-control': 'no-store'
+      };
+      if ((process.env.OPENWEB_RUNTIME || '').toLowerCase() === 'proot'
+          && request.headers['access-control-request-private-network'] === 'true') {
+        headers['access-control-allow-private-network'] = 'true';
+      }
+      response.writeHead(204, headers);
+      return response.end();
+    }
+
+    if (request.method !== 'GET') {
+      return sendJson(response, 405, { error: 'method_not_allowed' }, origin);
+    }
+
+    let status;
+    try {
+      status = await runtime.inspect();
+    } catch {
+      return sendJson(response, 503, {
+        provider: runtime.provider,
+        ready: false,
+        local_only: runtime.provider === 'PRoot'
+      }, origin);
+    }
+    return sendJson(response, status.ready ? 200 : 503, {
+      provider: status.provider,
+      ready: Boolean(status.ready),
+      local_only: Boolean(status.local_only),
+      environment: status.environment || (runtime.provider === 'PRoot' ? 'local' : 'remote'),
+      isolation: status.isolation || (runtime.provider === 'Docker' ? 'container' : 'host-managed'),
+      architecture: status.architecture || process.arch
+    }, origin);
+  }
 
   if (request.method === 'GET' && url.pathname === '/health') {
     return sendJson(response, 200, {
