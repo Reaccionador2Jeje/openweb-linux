@@ -1,5 +1,6 @@
 'use strict';
 
+const crypto = require('node:crypto');
 const { execFile, spawn } = require('node:child_process');
 const { promisify } = require('node:util');
 const fs = require('node:fs/promises');
