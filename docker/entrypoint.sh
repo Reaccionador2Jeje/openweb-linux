@@ -12,12 +12,26 @@ if [ "${#OPENWEB_ACCESS_TOKEN}" -lt 32 ]; then
   exit 1
 fi
 
-mkdir -p "$NELROOT_HOME"
-nelroot setup
+RUNTIME="${OPENWEB_RUNTIME:-docker}"
+case "$RUNTIME" in
+  docker)
+    echo "OpenWeb Linux starting with Docker runtime; checking configured Docker Engine."
+    if ! docker info >/dev/null 2>&1; then
+      echo "WARNING: Docker Engine is not reachable. The API will start, but terminal sessions remain unavailable until a dedicated Engine is configured." >&2
+    fi
+    ;;
+  nelroot)
+    mkdir -p "$NELROOT_HOME"
+    nelroot setup
+    if ! nelroot image inspect "$NELROOT_IMAGE" >/dev/null 2>&1; then
+      nelroot image register "$NELROOT_IMAGE" "$OPENWEB_ROOTFS" --architecture x86_64
+    fi
+    ;;
+  *)
+    echo "OPENWEB_RUNTIME must be docker or nelroot." >&2
+    exit 1
+    ;;
+esac
 
-if ! nelroot image inspect "$NELROOT_IMAGE" >/dev/null 2>&1; then
-  nelroot image register "$NELROOT_IMAGE" "$OPENWEB_ROOTFS" --architecture x86_64
-fi
-
-echo "OpenWeb Linux backend starting; rootless runtime preflight is enforced before terminal sessions."
+echo "OpenWeb Linux backend starting with runtime: $RUNTIME."
 exec node src/server.js
