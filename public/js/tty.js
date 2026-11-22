@@ -221,6 +221,8 @@
     if (!["local", "hosted"].includes(selectedMode)) {
       if (runtimePicker) runtimePicker.hidden = false;
       if (root) root.hidden = true;
+      if (loginButton) loginButton.hidden = true;
+      if (localLogin) localLogin.hidden = true;
       const localChoice = document.getElementById("choose-local");
       const hostedChoice = document.getElementById("choose-hosted");
       const selectMode = (mode) => {
