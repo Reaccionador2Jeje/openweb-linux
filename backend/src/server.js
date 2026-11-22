@@ -6,7 +6,7 @@ const http = require('node:http');
 const crypto = require('node:crypto');
 const pty = require('node-pty');
 const WebSocket = require('ws');
-const { NelRootRuntime } = require('./runtime');
+const { createRuntime } = require('./runtime');
 const {
   safeEqual,
   parseAllowedOrigins,
@@ -39,7 +39,7 @@ const LOGIN_CODE_TTL_MS = 60_000;
 const oauthStates = new Map();
 const loginCodes = new Map();
 
-const runtime = new NelRootRuntime();
+const runtime = createRuntime();
 const sessions = new Map();
 const ticketStore = createTicketStore({ ttlMs: TICKET_TTL_MS });
 let serviceManagerSmokeTest = { status: 'pending' };
