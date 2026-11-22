@@ -202,7 +202,7 @@
     socket.addEventListener("error", () => {
       if (state !== "error") {
         state = "disconnected";
-        write("\r\n\x1b[31m[network error] Could not reach the NELRoot backend.\x1b[0m\r\n");
+        write("\r\n\x1b[31m[network error] Could not reach the selected TTY backend.\x1b[0m\r\n");
       }
     });
   }
