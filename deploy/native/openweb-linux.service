@@ -14,7 +14,7 @@ Environment=HOST=127.0.0.1
 Environment=PORT=8787
 Environment=HOME=/home/openweb
 Environment=NELROOT_HOME=/home/openweb/.nelroot
-ExecStartPre=/opt/openweb-linux/deploy/native/preflight.sh
+ExecStartPre=/bin/sh /opt/openweb-linux/deploy/native/preflight.sh
 ExecStart=/usr/bin/node /opt/openweb-linux/backend/src/server.js
 Restart=on-failure
 RestartSec=3
