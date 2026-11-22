@@ -7,7 +7,10 @@
   const localLogin = document.getElementById("local-login");
   const localToken = document.getElementById("local-token");
   const localConnect = document.getElementById("local-connect");
-  const localMode = new URLSearchParams(location.search).get("mode") === "local";
+  const paramsAtBoot = new URLSearchParams(location.search);
+  const selectedMode = paramsAtBoot.get("mode") || "";
+  const localMode = selectedMode === "local";
+  const runtimePicker = document.getElementById("runtime-picker");
 
   let terminal;
   let fitAddon;
@@ -140,7 +143,7 @@
     const wsUrl = new URL(backend);
     wsUrl.searchParams.set("ticket", ticket);
     state = "connecting";
-    write("Connecting to the NELRoot Ubuntu runtime...\r\n");
+    write("Connecting to the selected Linux runtime...\r\n");
 
     try {
       socket = new WebSocket(wsUrl.toString());
@@ -159,7 +162,7 @@
       switch (message.type) {
         case "ready":
           state = "ready";
-          write("\r\n\x1b[32mConnected to NELRoot.\x1b[0m\r\n");
+          write("\r\n\x1b[32mConnected to Linux runtime.\x1b[0m\r\n");
           write("\x1b[90mRuntime: " + String(message.runtime || "Linux") +
             " · Image: " + String(message.image || "Ubuntu") + "\x1b[0m\r\n\r\n");
           terminal.focus();
@@ -215,6 +218,22 @@
   }
 
   function boot() {
+    if (!["local", "hosted"].includes(selectedMode)) {
+      if (runtimePicker) runtimePicker.hidden = false;
+      if (root) root.hidden = true;
+      const localChoice = document.getElementById("choose-local");
+      const hostedChoice = document.getElementById("choose-hosted");
+      const selectMode = (mode) => {
+        const next = new URL(location.href);
+        next.searchParams.set("mode", mode);
+        location.assign(next.toString());
+      };
+      if (localChoice) localChoice.addEventListener("click", () => selectMode("local"), { once: true });
+      if (hostedChoice) hostedChoice.addEventListener("click", () => selectMode("hosted"), { once: true });
+      return;
+    }
+    if (runtimePicker) runtimePicker.hidden = true;
+    if (root) root.hidden = false;
     if (!window.Terminal || !window.FitAddon) {
       root.textContent = "OpenWeb Linux TTY: terminal libraries could not be loaded.";
       return;
@@ -246,7 +265,7 @@
     fitAddon.fit();
 
     write("\x1b[97mOpenWeb Linux TTY 2.2\x1b[0m\r\n");
-    write("Rootless Ubuntu runtime · powered by NELRoot\r\n\r\n");
+    write("Linux runtime · local or remote\r\n\r\n");
 
     const backend = getBackendUrl();
     if (!backend) {
