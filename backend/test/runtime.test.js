@@ -91,6 +91,30 @@ test('Docker runtime builds a restricted per-session container command', async (
   });
 });
 
+
+test('Docker preflight requires both a reachable Engine and the configured image', async () => {
+  const runtime = new DockerRuntime({ image: 'ubuntu:24.04' });
+  runtime.command = async (args) => {
+    if (args[0] === 'info') return { stdout: 'Server Version: 27.5.1\\n' };
+    if (args[0] === 'image') return { stdout: '[{}]' };
+    throw new Error('unexpected command');
+  };
+  const ready = await runtime.inspect();
+  assert.equal(ready.provider, 'Docker');
+  assert.equal(ready.ready, true);
+  assert.equal(ready.docker_version, '27.5.1');
+
+  runtime.command = async (args) => {
+    if (args[0] === 'info') throw new Error('Docker daemon unavailable');
+    if (args[0] === 'image') throw new Error('image not present');
+    throw new Error('unexpected command');
+  };
+  const unavailable = await runtime.inspect();
+  assert.equal(unavailable.ready, false);
+  assert.equal(unavailable.docker_available, false);
+  assert.equal(unavailable.image_available, false);
+});
+
 test('Docker runtime refuses a malformed session identifier', () => {
   const runtime = new DockerRuntime();
   assert.throws(() => runtime.shellCommand({ id: '--privileged' }));
