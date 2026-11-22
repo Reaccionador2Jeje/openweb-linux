@@ -37,11 +37,3 @@ services:
         value: 1800000
       - key: OPENWEB_MAX_INPUT_BYTES
         value: 16384
-      - key: NELROOT_MEMORY
-        value: 512M
-      - key: NELROOT_CPU_TIME
-        value: 300
-      - key: NELROOT_MAX_FILES
-        value: 256
-      - key: NELROOT_MAX_FILE_SIZE
-        value: 64M
