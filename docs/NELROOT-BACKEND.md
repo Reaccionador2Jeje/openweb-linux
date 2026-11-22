@@ -22,7 +22,7 @@ Linux host kernel + registered Ubuntu rootfs
 
 ## Why this is a staged integration
 
-The NELRoot rootless runtime currently launches a same-architecture program from a read-only rootfs with a temporary writable `/tmp`. It does not yet offer persistent host workspace mounts, PID-namespace supervision, guest `/proc` and `/dev`, resource quotas or isolated networking. Consequently this backend currently provides an interactive shell integration target, not a full cloud development workspace.
+The NELRoot rootless runtime launches a same-architecture program from a read-only rootfs with bounded writable temporary storage, private user/mount/PID/network namespaces, guest `/proc`, a private tmpfs `/dev`, a host-side process supervisor and basic process resource limits. Persistent host workspace mounts, full standard device nodes, graceful signal forwarding, process-count/storage quotas and host port publishing remain pending. The local NELRoot service daemon and CLI lifecycle controls are implemented on Linux, but this OpenWeb backend currently exposes only the interactive TTY; it does not yet bridge those service controls into the web application. Consequently this is an interactive shell integration target, not a full cloud development workspace.
 
 OpenWeb Linux must not claim that `apt install`, persistent files, background services or arbitrary multi-user workloads are supported until the corresponding NELRoot capabilities exist and pass integration tests.
 
