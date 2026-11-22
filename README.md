@@ -57,6 +57,8 @@ Create a GitHub OAuth App and configure its callback URL as `https://YOUR-RENDER
 
 Read [backend/README.md](backend/README.md) and [NELRoot integration notes](docs/NELROOT-BACKEND.md).
 
+For a Linux host that supports NELRoot's required namespaces and mount operations, see the [native Linux deployment guide](deploy/native/README.md). The current Render container does not pass the rootless mount preflight.
+
 Quick setup on the Linux host:
 
 ```sh
