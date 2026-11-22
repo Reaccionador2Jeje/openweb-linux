@@ -215,4 +215,114 @@ class NelRootRuntime {
   }
 }
 
-module.exports = { NelRootRuntime, validateImageName, validateShellPath };
+
+function validateDockerImage(name) {
+  return typeof name === 'string'
+    && /^[a-zA-Z0-9][a-zA-Z0-9._/:@-]{0,127}$/.test(name);
+}
+
+class DockerRuntime {
+  constructor(options = {}) {
+    this.binary = options.binary || process.env.DOCKER_BIN || 'docker';
+    this.image = options.image || process.env.OPENWEB_DOCKER_IMAGE || 'ubuntu:24.04';
+    this.shell = options.shell || process.env.OPENWEB_DOCKER_SHELL || '/bin/bash';
+    this.execTimeoutMs = options.execTimeoutMs || 15000;
+    if (!validateDockerImage(this.image)) throw new Error('OPENWEB_DOCKER_IMAGE has an invalid name');
+    if (!validateShellPath(this.shell)) throw new Error('OPENWEB_DOCKER_SHELL must be a safe absolute path');
+  }
+
+  async command(args) {
+    return execFileAsync(this.binary, args, {
+      timeout: this.execTimeoutMs,
+      maxBuffer: 1024 * 1024,
+      windowsHide: true,
+      env: { ...process.env, NO_COLOR: '1' }
+    });
+  }
+
+  async inspect() {
+    const [daemon, image] = await Promise.allSettled([
+      this.command(['info', '--format', '{{.ServerVersion}}']),
+      this.command(['image', 'inspect', this.image])
+    ]);
+    const daemonAvailable = daemon.status === 'fulfilled'
+      && Boolean(daemon.value.stdout.trim());
+    const imageAvailable = image.status === 'fulfilled';
+    return {
+      provider: 'Docker',
+      docker_available: daemonAvailable,
+      docker_version: daemonAvailable ? daemon.value.stdout.trim().slice(0, 80) : null,
+      image: this.image,
+      image_available: imageAvailable,
+      ready: daemonAvailable && imageAvailable,
+      ...(daemonAvailable ? {} : {
+        docker_error: String(daemon.reason?.message || 'Docker Engine is unreachable').slice(0, 300)
+      }),
+      ...(imageAvailable ? {} : {
+        image_error: String(image.reason?.message || 'Docker image is not present on the configured engine').slice(0, 300)
+      }),
+      limitations: [
+        'Each terminal receives a separate container with no network, no host volumes and a read-only root filesystem.',
+        'The container has bounded memory, CPU, process count, file descriptors and temporary storage.',
+        'The Docker Engine endpoint is highly privileged; use a dedicated host and never expose an unauthenticated TCP Docker API.',
+        'Session data is ephemeral and the container is removed when the session ends.',
+        'This is an early single-user terminal runtime, not a reviewed public multi-tenant execution platform.'
+      ]
+    };
+  }
+
+  async createSession() {
+    const id = 'openweb-' + crypto.randomUUID();
+    const args = [
+      'run', '--detach', '--rm',
+      '--name', id,
+      '--network', 'none',
+      '--memory', '512m',
+      '--memory-swap', '512m',
+      '--cpus', '1',
+      '--pids-limit', '128',
+      '--ulimit', 'nofile=256:256',
+      '--ulimit', 'fsize=67108864:67108864',
+      '--read-only',
+      '--tmpfs', '/tmp:rw,noexec,nosuid,size=64m',
+      '--tmpfs', '/run:rw,noexec,nosuid,size=16m',
+      '--cap-drop', 'ALL',
+      '--security-opt', 'no-new-privileges',
+      '--user', '1000:1000',
+      '--workdir', '/tmp',
+      '--env', 'HOME=/tmp',
+      '--env', 'TERM=xterm-256color',
+      '--env', 'HISTFILE=/dev/null',
+      this.image,
+      'sleep', 'infinity'
+    ];
+    await this.command(args);
+    return { id };
+  }
+
+  shellCommand(session) {
+    if (!session || typeof session.id !== 'string' || !/^openweb-[0-9a-f-]{36}$/.test(session.id)) {
+      throw new Error('Invalid Docker session');
+    }
+    return {
+      file: this.binary,
+      args: ['exec', '--interactive', '--tty', session.id, this.shell, '--noprofile', '--norc', '-i']
+    };
+  }
+
+  async destroySession(session) {
+    if (!session || typeof session.id !== 'string' || !/^openweb-[0-9a-f-]{36}$/.test(session.id)) return;
+    try { await this.command(['rm', '--force', session.id]); } catch {}
+  }
+
+  async stopServiceSmokeTest() {}
+}
+
+function createRuntime() {
+  const provider = (process.env.OPENWEB_RUNTIME || 'docker').toLowerCase();
+  if (provider === 'docker') return new DockerRuntime();
+  if (provider === 'nelroot') return new NelRootRuntime();
+  throw new Error('OPENWEB_RUNTIME must be either docker or nelroot');
+}
+
+module.exports = { NelRootRuntime, DockerRuntime, createRuntime, validateImageName, validateShellPath, validateDockerImage };
