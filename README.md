@@ -47,11 +47,7 @@ window.OPENWEB_TTY_CONFIG = Object.freeze({
 });
 ```
 
-Do not put the access token in this file. Users enter the token into the terminal prompt. For local testing, a URL override is supported:
-
-```text
-?backend=ws://127.0.0.1:8787/terminal
-```
+Do not put administrator credentials in frontend files. Users authenticate with the **Sign in with GitHub** control; the backend exchanges that identity for a one-time login code and a short-lived WebSocket ticket.
 
 An HTTPS frontend requires WSS; browsers block insecure WebSocket connections from HTTPS pages.
 
@@ -91,10 +87,12 @@ Do not use this backend for untrusted public workloads until the missing runtime
 ## API
 
 - `GET /health` — backend liveness.
-- `GET /api/status` — authenticated NELRoot and image preflight.
-- `GET /terminal?token=...` — authenticated WebSocket PTY.
+- `GET /auth/github` and `GET /auth/github/callback` — GitHub OAuth sign-in.
+- `POST /api/session` — one-time login-code exchange for a short-lived WebSocket ticket.
+- `GET /api/status` — administrator-token protected NELRoot and image preflight.
+- `GET /terminal?ticket=...` — one-time ticket WebSocket PTY.
 
-The WebSocket client sends JSON `input` and `resize` messages. The server emits `ready`, `output`, `error` and `exit` messages. The query-token mechanism is for controlled testing; before public multi-user launch it should be replaced with a short-lived session exchange to reduce credential exposure in URLs and proxy logs.
+The WebSocket client sends JSON `input` and `resize` messages. The server emits `ready`, `output`, `error` and `exit` messages. The permanent administrator token is never sent to the browser.
 
 ## Legacy browser simulator
 
