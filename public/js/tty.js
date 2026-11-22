@@ -225,6 +225,48 @@
       if (localLogin) localLogin.hidden = true;
       const localChoice = document.getElementById("choose-local");
       const hostedChoice = document.getElementById("choose-hosted");
+      const localStatus = document.getElementById("local-runtime-status");
+      const hostedStatus = document.getElementById("hosted-runtime-status");
+      const refreshStatus = async (url, target, label) => {
+        if (!target) return;
+        target.textContent = label + ": checking…";
+        target.dataset.state = "checking";
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 3500);
+        try {
+          const response = await fetch(url, {
+            method: "GET",
+            mode: "cors",
+            cache: "no-store",
+            signal: controller.signal
+          });
+          const data = await response.json();
+          if (!response.ok || !data.ready) {
+            target.textContent = label + ": backend found, runtime unavailable";
+            target.dataset.state = "warning";
+            return;
+          }
+          target.textContent = label + ": ready · " + String(data.provider || "Linux");
+          target.dataset.state = "ready";
+        } catch {
+          target.textContent = label + ": not detected";
+          target.dataset.state = "offline";
+        } finally {
+          clearTimeout(timeout);
+        }
+      };
+      const localUrl = "http://127.0.0.1:8787/api/runtime-status";
+      refreshStatus(localUrl, localStatus, "Local PRoot");
+      const hostedUrl = CONFIG.backendUrl
+        ? new URL("/api/runtime-status", CONFIG.backendUrl.replace(/^ws/, "http")).toString()
+        : "";
+      if (hostedUrl) refreshStatus(hostedUrl, hostedStatus, "Remote host");
+      const refreshButton = document.getElementById("refresh-runtimes");
+      if (refreshButton) refreshButton.addEventListener("click", () => {
+        refreshStatus(localUrl, localStatus, "Local PRoot");
+        if (hostedUrl) refreshStatus(hostedUrl, hostedStatus, "Remote host");
+      });
+
       const selectMode = (mode) => {
         const next = new URL(location.href);
         next.searchParams.set("mode", mode);
